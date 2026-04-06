@@ -13,10 +13,10 @@ namespace SurvivalGame.Core.Systems
 
         public override void Tick(float delta)
         {
-            foreach (var entityId in World.Instance.Query<SurvivalComponent, HealthComponent>())
+            foreach (var entityId in EcsWorld.Instance.Query<SurvivalComponent, HealthComponent>())
             {
-                var s = World.Instance.GetComponent<SurvivalComponent>(entityId)!;
-                var h = World.Instance.GetComponent<HealthComponent>(entityId)!;
+                var s = EcsWorld.Instance.GetComponent<SurvivalComponent>(entityId)!;
+                var h = EcsWorld.Instance.GetComponent<HealthComponent>(entityId)!;
 
                 // ── 饥饿/口渴消耗 ────────────────────────────────────────
                 float hungerDrain = s.HungerDrainRate;
@@ -45,7 +45,7 @@ namespace SurvivalGame.Core.Systems
 
         private void UpdateTemperature(int entityId, SurvivalComponent s, float delta)
         {
-            var pos = World.Instance.GetComponent<PositionComponent>(entityId);
+            var pos = EcsWorld.Instance.GetComponent<PositionComponent>(entityId);
             float biomeTemp = WorldManager.Instance?.GetBiomeTemperature(pos?.Position ?? Vector3.Zero) ?? 22f;
             float timeTemp  = DayNightSystem.Instance?.GetTemperatureModifier() ?? 0f;
             float target    = biomeTemp + timeTemp;
@@ -56,7 +56,7 @@ namespace SurvivalGame.Core.Systems
 
         public void EatFood(int entityId, float hungerRestore, float thirstRestore = 0f)
         {
-            var s = World.Instance.GetComponent<SurvivalComponent>(entityId);
+            var s = EcsWorld.Instance.GetComponent<SurvivalComponent>(entityId);
             if (s == null) return;
             s.Hunger = Mathf.Min(100f, s.Hunger + hungerRestore);
             s.Thirst = Mathf.Min(100f, s.Thirst + thirstRestore);

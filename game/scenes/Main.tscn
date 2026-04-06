@@ -1,4 +1,4 @@
-[gd_scene load_steps=7 format=3 uid="uid://main_scene"]
+[gd_scene load_steps=13 format=3 uid="uid://main_scene"]
 
 [ext_resource type="Script" path="res://core/systems/GameManager.cs" id="1_gamemanager"]
 [ext_resource type="Script" path="res://world/WorldManager.cs" id="2_worldmanager"]
@@ -6,6 +6,17 @@
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="4_player"]
 [ext_resource type="Script" path="res://entities/creatures/CreatureSpawner.cs" id="5_spawner"]
 [ext_resource type="Script" path="res://entities/building/BuildingPlacer.cs" id="6_placer"]
+[ext_resource type="PackedScene" path="res://scenes/ResourceNode.tscn" id="7_resnode"]
+[ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="8_hud"]
+
+[sub_resource type="PlaneMesh" id="1"]
+size = Vector2(100, 100)
+
+[sub_resource type="BoxShape3D" id="2"]
+size = Vector3(100, 0.2, 100)
+
+[sub_resource type="StandardMaterial3D" id="3"]
+albedo_color = Color(0.32, 0.52, 0.22, 1)
 
 [node name="Main" type="Node3D"]
 
@@ -27,8 +38,15 @@ shadow_enabled = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Environment"]
 
-[node name="Ground" type="MeshInstance3D" parent="."]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+[node name="Ground" type="StaticBody3D" parent="."]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+mesh = SubResource("1")
+surface_material_override/0 = SubResource("3")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
+shape = SubResource("2")
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
 
 [node name="Player" parent="." instance=ExtResource("4_player")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
@@ -38,3 +56,22 @@ script = ExtResource("5_spawner")
 
 [node name="BuildingPlacer" type="Node3D" parent="."]
 script = ExtResource("6_placer")
+
+[node name="Resources" type="Node3D" parent="."]
+
+[node name="Tree1" parent="Resources" instance=ExtResource("7_resnode")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -2)
+
+[node name="Tree2" parent="Resources" instance=ExtResource("7_resnode")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 3)
+
+[node name="Tree3" parent="Resources" instance=ExtResource("7_resnode")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 5)
+
+[node name="Tree4" parent="Resources" instance=ExtResource("7_resnode")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6)
+
+[node name="Tree5" parent="Resources" instance=ExtResource("7_resnode")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -3)
+
+[node name="HUD" parent="." instance=ExtResource("8_hud")]

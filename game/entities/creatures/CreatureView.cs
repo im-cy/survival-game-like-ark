@@ -42,7 +42,7 @@ namespace SurvivalGame.Entities.Creatures
         {
             if (EntityId < 0) return;
 
-            var pos = World.Instance.GetComponent<PositionComponent>(EntityId);
+            var pos = EcsWorld.Instance.GetComponent<PositionComponent>(EntityId);
             if (pos == null) return;
 
             // 同步 3D 位置

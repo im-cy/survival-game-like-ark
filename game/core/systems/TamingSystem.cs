@@ -12,9 +12,9 @@ namespace SurvivalGame.Core.Systems
 
         public override void Tick(float delta)
         {
-            foreach (var entityId in World.Instance.Query<TamingComponent>())
+            foreach (var entityId in EcsWorld.Instance.Query<TamingComponent>())
             {
-                var t = World.Instance.GetComponent<TamingComponent>(entityId)!;
+                var t = EcsWorld.Instance.GetComponent<TamingComponent>(entityId)!;
 
                 switch (t.State)
                 {
@@ -22,13 +22,13 @@ namespace SurvivalGame.Core.Systems
                         t.SedationTimer -= delta;
                         if (t.SedationTimer <= 0f)
                         {
-                            t.State = TamingState.Hostile;
+                            t.State = TamingState.Wild;
                             t.TrustProgress = 0f;   // 麻醉耗尽 → 驯养失败
                         }
                         break;
 
                     case TamingState.Tamed:
-                        var stats = World.Instance.GetComponent<CreatureStatsComponent>(entityId);
+                        var stats = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(entityId);
                         if (stats == null) break;
                         stats.Loyalty = Mathf.Max(0f, stats.Loyalty - LoyaltyDrainPerSec * delta);
                         if (stats.Loyalty <= 0f)
@@ -43,10 +43,10 @@ namespace SurvivalGame.Core.Systems
         /// <summary>玩家尝试喂食（被动驯养）</summary>
         public TamingFeedResult TryFeedCreature(int playerId, int creatureId)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(creatureId);
-            var inv    = World.Instance.GetComponent<InventoryComponent>(playerId);
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId);
+            var inv    = EcsWorld.Instance.GetComponent<InventoryComponent>(playerId);
             if (taming == null || inv == null) return TamingFeedResult.InvalidTarget;
-            if (taming.State == TamingState.Hostile) return TamingFeedResult.Hostile;
+            if (taming.State == TamingState.Wild) return TamingFeedResult.Hostile;
             if (taming.State == TamingState.Tamed)   return TamingFeedResult.AlreadyTamed;
 
             // 优先用偏好食物
@@ -71,7 +71,7 @@ namespace SurvivalGame.Core.Systems
         /// <summary>麻醉击晕生物（击晕驯养第一步）</summary>
         public void Sedate(int creatureId, float sedationDuration)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(creatureId);
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId);
             if (taming == null) return;
             taming.State = TamingState.Sedated;
             taming.SedationTimer += sedationDuration;
@@ -80,7 +80,7 @@ namespace SurvivalGame.Core.Systems
         /// <summary>驯服后补充麻醉时间</summary>
         public void AddSedation(int creatureId, float amount)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(creatureId);
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId);
             if (taming?.State == TamingState.Sedated)
                 taming.SedationTimer = Mathf.Min(taming.SedationTimer + amount, 300f);
         }
@@ -88,7 +88,7 @@ namespace SurvivalGame.Core.Systems
         /// <summary>生物受伤时降低驯养效率</summary>
         public void OnCreatureHitDuringTaming(int creatureId, float damageTaken)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(creatureId);
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId);
             if (taming == null || taming.State == TamingState.Tamed) return;
             taming.TamingEffectiveness = Mathf.Max(0f, taming.TamingEffectiveness - damageTaken * 0.5f);
         }
@@ -97,9 +97,9 @@ namespace SurvivalGame.Core.Systems
 
         private void CompleteTaming(int playerId, int creatureId)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(creatureId)!;
-            var stats  = World.Instance.GetComponent<CreatureStatsComponent>(creatureId)!;
-            var health = World.Instance.GetComponent<HealthComponent>(creatureId)!;
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId)!;
+            var stats  = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(creatureId)!;
+            var health = EcsWorld.Instance.GetComponent<HealthComponent>(creatureId)!;
 
             taming.State  = TamingState.Tamed;
             stats.OwnerId = playerId;
@@ -115,7 +115,7 @@ namespace SurvivalGame.Core.Systems
 
         private void AbandonCreature(int entityId, CreatureStatsComponent stats)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(entityId)!;
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(entityId)!;
             taming.State   = TamingState.Wild;
             stats.OwnerId  = -1;
             stats.Loyalty  = 100f;

@@ -37,3 +37,17 @@ offset_top = 10.0
 offset_right = -10.0
 offset_bottom = 35.0
 text = "Day 1  06:00"
+
+[node name="InventoryPanel" type="PanelContainer" parent="."]
+anchor_left = 1.0
+anchor_right = 1.0
+anchor_top = 1.0
+anchor_bottom = 1.0
+offset_left = -220.0
+offset_top = -220.0
+offset_right = -10.0
+offset_bottom = -10.0
+
+[node name="InventoryLabel" type="Label" parent="InventoryPanel"]
+text = "背包"
+autowrap_mode = 3

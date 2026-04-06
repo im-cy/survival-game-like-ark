@@ -161,6 +161,19 @@ namespace SurvivalGame.Core.ECS
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    // 资源 / 采集组件
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class HarvestableComponent
+    {
+        public string ResourceId = "wood";   // 掉落物品 ID
+        public int YieldMin = 1;
+        public int YieldMax = 3;
+        public int HitsRemaining = 3;        // 还能被采几次
+        public bool Depleted = false;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // 枚举
     // ═══════════════════════════════════════════════════════════════════
 

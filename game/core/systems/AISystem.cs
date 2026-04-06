@@ -1,5 +1,6 @@
 using Godot;
 using SurvivalGame.Core.ECS;
+using SurvivalGame.World;
 
 namespace SurvivalGame.Core.Systems
 {
@@ -24,10 +25,10 @@ namespace SurvivalGame.Core.Systems
             _passiveAccum += delta;
             bool doPassive = _passiveAccum >= PassiveTick;
 
-            foreach (var entityId in World.Instance.Query<AIComponent, PositionComponent>())
+            foreach (var entityId in EcsWorld.Instance.Query<AIComponent, PositionComponent>())
             {
-                var ai  = World.Instance.GetComponent<AIComponent>(entityId)!;
-                var pos = World.Instance.GetComponent<PositionComponent>(entityId)!;
+                var ai  = EcsWorld.Instance.GetComponent<AIComponent>(entityId)!;
+                var pos = EcsWorld.Instance.GetComponent<PositionComponent>(entityId)!;
 
                 float dist = pos.Position.DistanceTo(_playerPos);
                 ai.Tier = dist < ActiveRange  ? AITier.Active
@@ -52,7 +53,7 @@ namespace SurvivalGame.Core.Systems
 
         private void TickFSM(int id, AIComponent ai, PositionComponent pos, float delta)
         {
-            var taming = World.Instance.GetComponent<TamingComponent>(id);
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id);
             ai.StateTimer += delta;
 
             switch (ai.CurrentState)
@@ -100,7 +101,7 @@ namespace SurvivalGame.Core.Systems
         private void TickPassive(int id, AIComponent ai, PositionComponent pos, float dt)
         {
             // 被动 tick：只更新饥饿/忠诚等慢速状态，不做寻路
-            var stats = World.Instance.GetComponent<CreatureStatsComponent>(id);
+            var stats = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id);
             if (stats != null)
                 stats.Loyalty = Mathf.Max(0f, stats.Loyalty - 0.1f * dt);
         }

@@ -13,8 +13,8 @@ namespace SurvivalGame.Core.Systems
             var recipe = RecipeRegistry.Instance.Get(recipeId);
             if (recipe == null) return CraftResult.UnknownRecipe;
 
-            var inv    = World.Instance.GetComponent<InventoryComponent>(entityId);
-            var pstats = World.Instance.GetComponent<PlayerStatsComponent>(entityId);
+            var inv    = EcsWorld.Instance.GetComponent<InventoryComponent>(entityId);
+            var pstats = EcsWorld.Instance.GetComponent<PlayerStatsComponent>(entityId);
             if (inv == null) return CraftResult.Failed;
 
             // 解锁检查

@@ -22,16 +22,16 @@ namespace SurvivalGame.Entities.Player
         public override void _Ready()
         {
             // 在 ECS World 中创建玩家实体
-            EntityId = World.Instance.CreateEntity();
+            EntityId = EcsWorld.Instance.CreateEntity();
 
             _survival = new SurvivalComponent();
             _position = new PositionComponent { Position = GlobalPosition };
 
-            World.Instance.AddComponent(EntityId, _survival);
-            World.Instance.AddComponent(EntityId, _position);
-            World.Instance.AddComponent(EntityId, new HealthComponent { MaxHp = 100f, CurrentHp = 100f });
-            World.Instance.AddComponent(EntityId, new InventoryComponent());
-            World.Instance.AddComponent(EntityId, new PlayerStatsComponent());
+            EcsWorld.Instance.AddComponent(EntityId, _survival);
+            EcsWorld.Instance.AddComponent(EntityId, _position);
+            EcsWorld.Instance.AddComponent(EntityId, new HealthComponent { MaxHp = 100f, CurrentHp = 100f });
+            EcsWorld.Instance.AddComponent(EntityId, new InventoryComponent());
+            EcsWorld.Instance.AddComponent(EntityId, new PlayerStatsComponent());
 
             GD.Print($"[Player] EntityId={EntityId}");
         }
@@ -82,8 +82,9 @@ namespace SurvivalGame.Entities.Player
 
         private void TryInteract()
         {
-            // TODO: 射线检测最近的可交互实体（生物/资源/建造件）
-            EventBus.Instance.Emit("player_interact", EntityId);
+            var result = GameManager.Instance?.Harvest?.TryHarvest(EntityId);
+            if (result == HarvestResult.NoTarget)
+                GD.Print("[Player] 附近没有可采集的资源（距离 > 2.5m）");
         }
     }
 }

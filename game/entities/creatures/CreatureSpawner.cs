@@ -26,23 +26,23 @@ namespace SurvivalGame.Entities.Creatures
             }
 
             // 创建 ECS 实体
-            int entityId = World.Instance.CreateEntity();
+            int entityId = EcsWorld.Instance.CreateEntity();
 
-            World.Instance.AddComponent(entityId, new PositionComponent { Position = worldPos });
-            World.Instance.AddComponent(entityId, new HealthComponent { MaxHp = def.BaseHp, CurrentHp = def.BaseHp });
-            World.Instance.AddComponent(entityId, new TamingComponent
+            EcsWorld.Instance.AddComponent(entityId, new PositionComponent { Position = worldPos });
+            EcsWorld.Instance.AddComponent(entityId, new HealthComponent { MaxHp = def.BaseHp, CurrentHp = def.BaseHp });
+            EcsWorld.Instance.AddComponent(entityId, new TamingComponent
             {
                 PreferredFood = def.PreferredFood,
                 Method        = def.TamingMethod,
             });
-            World.Instance.AddComponent(entityId, new CreatureStatsComponent
+            EcsWorld.Instance.AddComponent(entityId, new CreatureStatsComponent
             {
                 SpeciesId = speciesId,
                 CanRide   = def.CanRide,
                 CanFly    = def.CanFly,
                 HarvestResourceType = def.HarvestResourceType,
             });
-            World.Instance.AddComponent(entityId, new AIComponent
+            EcsWorld.Instance.AddComponent(entityId, new AIComponent
             {
                 DetectionRange = 12f,
                 AttackRange    = 2f,
