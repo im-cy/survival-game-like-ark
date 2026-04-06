@@ -1,0 +1,40 @@
+[gd_scene load_steps=7 format=3 uid="uid://main_scene"]
+
+[ext_resource type="Script" path="res://core/systems/GameManager.cs" id="1_gamemanager"]
+[ext_resource type="Script" path="res://world/WorldManager.cs" id="2_worldmanager"]
+[ext_resource type="Script" path="res://world/ChunkManager.cs" id="3_chunkmanager"]
+[ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="4_player"]
+[ext_resource type="Script" path="res://entities/creatures/CreatureSpawner.cs" id="5_spawner"]
+[ext_resource type="Script" path="res://entities/building/BuildingPlacer.cs" id="6_placer"]
+
+[node name="Main" type="Node3D"]
+
+[node name="GameManager" type="Node" parent="."]
+script = ExtResource("1_gamemanager")
+
+[node name="WorldManager" type="Node3D" parent="."]
+script = ExtResource("2_worldmanager")
+
+[node name="ChunkManager" type="Node" parent="."]
+script = ExtResource("3_chunkmanager")
+
+[node name="Environment" type="Node3D" parent="."]
+
+[node name="DirectionalLight" type="DirectionalLight3D" parent="Environment"]
+transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 10, 0)
+light_energy = 1.2
+shadow_enabled = true
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Environment"]
+
+[node name="Ground" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="Player" parent="." instance=ExtResource("4_player")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+
+[node name="CreatureSpawner" type="Node" parent="."]
+script = ExtResource("5_spawner")
+
+[node name="BuildingPlacer" type="Node3D" parent="."]
+script = ExtResource("6_placer")
