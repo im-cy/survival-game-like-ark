@@ -25,7 +25,7 @@ visible = false
 
 [node name="Sprite3D" type="Sprite3D" parent="."]
 billboard = 1
-pixel_size = 0.02
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.8, 0)
+pixel_size = 0.007
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.8, 0)
 texture = ExtResource("2_tex")
 visible = true

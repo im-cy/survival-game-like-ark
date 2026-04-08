@@ -13,8 +13,8 @@ light_energy = 1.8
 
 [node name="Sprite3D" type="Sprite3D" parent="."]
 billboard = 1
-pixel_size = 0.015
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+pixel_size = 0.005
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.1, 0)
 texture = ExtResource("2_tex")
 
 [node name="Logs" type="MeshInstance3D" parent="."]
