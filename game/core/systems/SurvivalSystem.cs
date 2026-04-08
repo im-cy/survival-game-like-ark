@@ -46,11 +46,29 @@ namespace SurvivalGame.Core.Systems
         private void UpdateTemperature(int entityId, SurvivalComponent s, float delta)
         {
             var pos = EcsWorld.Instance.GetComponent<PositionComponent>(entityId);
-            float biomeTemp     = WorldManager.Instance?.GetBiomeTemperature(pos?.Position ?? Vector3.Zero) ?? 37f;
+            Vector3 worldPos    = pos?.Position ?? Vector3.Zero;
+            float biomeTemp     = WorldManager.Instance?.GetBiomeTemperature(worldPos) ?? 37f;
             float timeTemp      = DayNightSystem.Instance?.GetTemperatureModifier() ?? 0f;
-            float campfireBonus = GetCampfireBonus(pos?.Position ?? Vector3.Zero);
-            float target        = biomeTemp + timeTemp + campfireBonus;
+            float campfireBonus = GetCampfireBonus(worldPos);
+            float shelterBonus  = GetShelterBonus(entityId, worldPos);
+            float target        = biomeTemp + timeTemp + campfireBonus + shelterBonus;
             s.Temperature       = Mathf.Lerp(s.Temperature, target, 0.05f * delta);
+        }
+
+        /// <summary>查询玩家是否在茅草房内（房屋内部 3.5×3.5m），提供 +10°C 保温。</summary>
+        private static float GetShelterBonus(int entityId, Vector3 position)
+        {
+            foreach (var bpId in EcsWorld.Instance.Query<BuildingPieceComponent, PositionComponent>())
+            {
+                var bp = EcsWorld.Instance.GetComponent<BuildingPieceComponent>(bpId)!;
+                if (bp.PieceId != "thatch_house") continue;
+                var bpPos = EcsWorld.Instance.GetComponent<PositionComponent>(bpId)!;
+                var diff  = position - bpPos.Position;
+                // 房屋内部约 3.5×3.5m（减去墙厚）
+                if (Mathf.Abs(diff.X) < 1.75f && Mathf.Abs(diff.Z) < 1.75f)
+                    return 10f;
+            }
+            return 0f;
         }
 
         /// <summary>查询附近点燃的营火，返回最大加温幅度。</summary>

@@ -3,7 +3,9 @@ using System.Collections.Generic;
 namespace SurvivalGame.Core.Data
 {
     /// <summary>
-    /// 建造件定义 — M2 硬编码：营火、茅草地板、茅草墙。
+    /// 建造件定义 — M2：营火、茅草房（整体建筑）。
+    /// 设计原则：2.5D俯视游戏中，建造物以"整体"为单位放置，
+    ///            而非零散拼接墙片/地板，保证视觉完整性。
     /// </summary>
     public class BuildingPieceDef
     {
@@ -11,6 +13,8 @@ namespace SurvivalGame.Core.Data
         public string DisplayName = "";
         public Dictionary<string, int> Materials = new();
         public bool IsCampfire = false;
+        /// <summary>是否提供庇护所效果（挡风避寒）</summary>
+        public bool IsShelter = false;
     }
 
     public static class BuildingRegistry
@@ -25,13 +29,9 @@ namespace SurvivalGame.Core.Data
             },
             new BuildingPieceDef
             {
-                Id = "thatch_floor", DisplayName = "茅草地板",
-                Materials = new Dictionary<string, int> { ["grass"] = 5 }
-            },
-            new BuildingPieceDef
-            {
-                Id = "thatch_wall", DisplayName = "茅草墙",
-                Materials = new Dictionary<string, int> { ["grass"] = 8, ["wood"] = 2 }
+                Id = "thatch_house", DisplayName = "茅草房",
+                Materials = new Dictionary<string, int> { ["grass"] = 15, ["wood"] = 5 },
+                IsShelter = true
             },
         };
 

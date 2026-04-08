@@ -2,8 +2,8 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dg8wf07hgb0eu"
-path.s3tc="res://.godot/imported/player.png-e1eaffe0873063c60a0d0b322e4d87d9.s3tc.ctex"
+uid="uid://dweop5lncsyvc"
+path.s3tc="res://.godot/imported/berry_bush.png-2ae56b1864826e53461421489e2da243.s3tc.ctex"
 metadata={
 "imported_formats": ["s3tc_bptc"],
 "vram_texture": true
@@ -11,8 +11,8 @@ metadata={
 
 [deps]
 
-source_file="res://assets/sprites/player.png"
-dest_files=["res://.godot/imported/player.png-e1eaffe0873063c60a0d0b322e4d87d9.s3tc.ctex"]
+source_file="res://assets/sprites/berry_bush.png"
+dest_files=["res://.godot/imported/berry_bush.png-2ae56b1864826e53461421489e2da243.s3tc.ctex"]
 
 [params]
 

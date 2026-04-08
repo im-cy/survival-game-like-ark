@@ -18,12 +18,11 @@ namespace SurvivalGame.Entities.Building
         private Node3D? _preview;
         private Camera3D? _camera;
 
-        // 营火和建造件的预制场景路径
+        // 建造件 → 预制场景路径
         private static readonly Dictionary<string, string> PieceScenes = new()
         {
             ["campfire"]     = "res://scenes/Campfire.tscn",
-            ["thatch_floor"] = "res://scenes/BuildingPiece.tscn",
-            ["thatch_wall"]  = "res://scenes/BuildingPiece.tscn",
+            ["thatch_house"] = "res://scenes/BuildingPiece.tscn",
         };
 
         public override void _Ready()
@@ -159,36 +158,77 @@ namespace SurvivalGame.Entities.Building
         private static Node3D CreatePreviewNode(string pieceId)
         {
             var root = new Node3D();
-            var mesh = new MeshInstance3D();
-
-            var mat = new StandardMaterial3D
+            var mat  = new StandardMaterial3D
             {
                 Transparency = BaseMaterial3D.TransparencyEnum.Alpha,
-                AlbedoColor  = new Color(0.9f, 0.85f, 0.3f, 0.45f)
+                AlbedoColor  = new Color(0.9f, 0.85f, 0.3f, 0.42f)
             };
 
             switch (pieceId)
             {
                 case "campfire":
-                    mesh.Mesh = new CylinderMesh { TopRadius = 0.3f, BottomRadius = 0.5f, Height = 0.4f };
-                    mesh.Position = new Vector3(0f, 0.2f, 0f);
+                {
+                    var m = new MeshInstance3D
+                    {
+                        Mesh             = new CylinderMesh { TopRadius = 0.3f, BottomRadius = 0.5f, Height = 0.4f },
+                        Position         = new Vector3(0f, 0.2f, 0f),
+                        MaterialOverride = mat
+                    };
+                    root.AddChild(m);
                     break;
-                case "thatch_floor":
-                    mesh.Mesh = new BoxMesh { Size = new Vector3(2f, 0.15f, 2f) };
-                    mesh.Position = new Vector3(0f, 0.075f, 0f);
+                }
+
+                case "thatch_house":
+                {
+                    // 显示房屋占地框 + 轮廓墙，让玩家了解放置范围
+                    AddPreviewBox(root, new Vector3(0f, 0.1f, 0f),   new Vector3(4f, 0.2f, 4f), mat);   // 地板
+                    AddPreviewBox(root, new Vector3(0f, 1.45f, -2f),  new Vector3(4f, 2.5f, 0.25f), mat); // 北墙
+                    AddPreviewBox(root, new Vector3(2f, 1.45f, 0f),   new Vector3(0.25f, 2.5f, 4f), mat); // 东墙
+                    AddPreviewBox(root, new Vector3(-2f, 1.45f, 0f),  new Vector3(0.25f, 2.5f, 4f), mat); // 西墙
+                    AddPreviewBox(root, new Vector3(-1.25f, 1.45f, 2f), new Vector3(1.5f, 2.5f, 0.25f), mat); // 南左
+                    AddPreviewBox(root, new Vector3(1.25f, 1.45f, 2f),  new Vector3(1.5f, 2.5f, 0.25f), mat); // 南右
+
+                    // 屋顶轮廓（四棱锥）
+                    var roofNode = new Node3D { Position = new Vector3(0f, 4.25f, 0f) };
+                    roofNode.RotationDegrees = new Vector3(0f, 45f, 0f);
+                    var roofMesh = new MeshInstance3D
+                    {
+                        Mesh = new CylinderMesh
+                        {
+                            TopRadius = 0f, BottomRadius = Mathf.Sqrt(2f) * 2f + 0.2f,
+                            Height = 1.5f, RadialSegments = 4, Rings = 1
+                        },
+                        MaterialOverride = mat
+                    };
+                    roofNode.AddChild(roofMesh);
+                    root.AddChild(roofNode);
                     break;
-                case "thatch_wall":
-                    mesh.Mesh = new BoxMesh { Size = new Vector3(2f, 2.5f, 0.2f) };
-                    mesh.Position = new Vector3(0f, 1.25f, 0f);
-                    break;
+                }
+
                 default:
-                    mesh.Mesh = new BoxMesh { Size = Vector3.One };
+                {
+                    var m = new MeshInstance3D
+                    {
+                        Mesh             = new BoxMesh { Size = Vector3.One },
+                        MaterialOverride = mat
+                    };
+                    root.AddChild(m);
                     break;
+                }
             }
 
-            mesh.MaterialOverride = mat;
-            root.AddChild(mesh);
             return root;
+        }
+
+        private static void AddPreviewBox(Node3D parent, Vector3 pos, Vector3 size, StandardMaterial3D mat)
+        {
+            var m = new MeshInstance3D
+            {
+                Mesh             = new BoxMesh { Size = size },
+                Position         = pos,
+                MaterialOverride = mat
+            };
+            parent.AddChild(m);
         }
 
         public override void _ExitTree()
