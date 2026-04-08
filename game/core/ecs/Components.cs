@@ -158,6 +158,43 @@ namespace SurvivalGame.Core.ECS
         public float StateTimer = 0f;
         public float DetectionRange = 10f;
         public float AttackRange = 2f;
+        public float AttackPower = 10f;      // 每次攻击伤害
+        public float AttackCooldown = 1.5f;  // 攻击冷却（秒）
+        public float AttackTimer = 0f;       // 距下次攻击还需等待的时间
+        public float AggroIgnoreDistTimer = 0f; // 远程命中后无视距离限制的持续时间
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 弹射物组件（箭矢等飞行弹射物）
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class ProjectileComponent
+    {
+        public int     OwnerId          = -1;
+        public Vector3 Direction;                // 归一化飞行方向
+        public float   Speed            = 22f;   // 飞行速度（米/秒）
+        public float   Damage           = 30f;   // 命中伤害
+        public float   MaxRange         = 22f;   // 最大射程（米）
+        public float   TraveledDistance = 0f;    // 已飞行距离
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 尸体战利品组件（死亡生物携带，可用 E 键逐项采集）
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class CorpseComponent
+    {
+        public List<string> RemainingLoot = new();   // "itemId:qty" 格式，逐项采集
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 装备组件
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class EquipmentComponent
+    {
+        public string? WeaponId = null;   // 当前装备的武器/工具 ID（null = 空手）
+        public string? ChestId  = null;   // 当前装备的胸甲 ID（null = 无甲）
     }
 
     // ═══════════════════════════════════════════════════════════════════

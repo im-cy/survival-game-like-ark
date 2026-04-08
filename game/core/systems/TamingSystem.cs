@@ -47,6 +47,11 @@ namespace SurvivalGame.Core.Systems
             var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId);
             var inv    = EcsWorld.Instance.GetComponent<InventoryComponent>(playerId);
             if (taming == null || inv == null) return TamingFeedResult.InvalidTarget;
+
+            // 死亡生物不可驯养
+            var ai = EcsWorld.Instance.GetComponent<AIComponent>(creatureId);
+            if (ai?.CurrentState == FSMState.Dead) return TamingFeedResult.InvalidTarget;
+
             // 击晕驯养型生物需先麻醉，被动型可直接喂食
             if (taming.State == TamingState.Wild && taming.Method == TamingMethod.Knockout)
                 return TamingFeedResult.Hostile;

@@ -25,6 +25,11 @@ namespace SurvivalGame.UI
 
         private int _playerEntityId = -1;
 
+        // Boss 血条
+        private PanelContainer _bossPanel = null!;
+        private ProgressBar    _bossBar   = null!;
+        private Label          _bossLabel = null!;
+
         private static readonly (string icon, string name, Color color)[] BarDefs =
         {
             ("❤", "生命",  new Color(0.87f, 0.20f, 0.20f)),
@@ -39,6 +44,7 @@ namespace SurvivalGame.UI
             _inventoryLabel = GetNode<Label>("InventoryPanel/InventoryLabel");
 
             BuildStatusPanel();
+            BuildBossPanel();
             EventBus.Instance.Subscribe("time_updated", OnTimeUpdated);
         }
 
@@ -123,10 +129,43 @@ namespace SurvivalGame.UI
             vbox.AddChild(_companionLabel);
 
             // ── 操作提示行 ────────────────────────────────────────────
-            _hintLabel = new Label { Text = "E=采集/喂食  F=食用  B=建造  H=指令" };
+            _hintLabel = new Label { Text = "左键=攻击  E=采集/喂食  F=食用  B=建造  C=制作  I=背包  H=指令" };
             _hintLabel.AddThemeColorOverride("font_color", new Color(0.65f, 0.65f, 0.65f));
             _hintLabel.AddThemeConstantOverride("font_size", 11);
             vbox.AddChild(_hintLabel);
+        }
+
+        // ── Boss 血条面板 ─────────────────────────────────────────────────
+
+        private void BuildBossPanel()
+        {
+            _bossPanel = new PanelContainer();
+            _bossPanel.SetAnchorsAndOffsetsPreset(Control.LayoutPreset.CenterTop);
+            _bossPanel.OffsetTop    = 10f;
+            _bossPanel.OffsetBottom = 60f;
+            _bossPanel.OffsetLeft   = -200f;
+            _bossPanel.OffsetRight  =  200f;
+            _bossPanel.Visible = false;
+            AddChild(_bossPanel);
+
+            var vbox = new VBoxContainer();
+            vbox.AddThemeConstantOverride("separation", 4);
+            vbox.CustomMinimumSize = new Vector2(380f, 0f);
+            _bossPanel.AddChild(vbox);
+
+            _bossLabel = new Label { Text = "森林守卫者" };
+            _bossLabel.HorizontalAlignment = HorizontalAlignment.Center;
+            _bossLabel.AddThemeColorOverride("font_color", new Color(0.95f, 0.25f, 0.25f));
+            _bossLabel.AddThemeConstantOverride("font_size", 14);
+            vbox.AddChild(_bossLabel);
+
+            _bossBar = new ProgressBar();
+            _bossBar.MaxValue = 100;
+            _bossBar.Value    = 100;
+            _bossBar.ShowPercentage = false;
+            _bossBar.CustomMinimumSize = new Vector2(0f, 20f);
+            ApplyBarColor(_bossBar, new Color(0.85f, 0.15f, 0.15f));
+            vbox.AddChild(_bossBar);
         }
 
         // ── 每帧更新 ──────────────────────────────────────────────────────
@@ -165,15 +204,65 @@ namespace SurvivalGame.UI
             // 伴侣状态（驯服进度 / 已驯服指令状态）
             UpdateCompanionStatus();
 
-            var inv = EcsWorld.Instance.GetComponent<InventoryComponent>(_playerEntityId);
+            // Boss 血条（附近有 Boss 时显示）
+            UpdateBossBar();
+
+            var inv   = EcsWorld.Instance.GetComponent<InventoryComponent>(_playerEntityId);
+            var equip = EcsWorld.Instance.GetComponent<EquipmentComponent>(_playerEntityId);
             if (inv != null)
             {
                 var sb = new System.Text.StringBuilder("🎒 背包\n");
                 foreach (var item in inv.Items)
-                    sb.AppendLine($"  {item.ItemId}  ×{item.Quantity}");
+                {
+                    var def = Core.Data.ItemRegistry.Instance.Get(item.ItemId);
+                    string name = def?.DisplayName ?? item.ItemId;
+                    sb.AppendLine($"  {name}  ×{item.Quantity}");
+                }
                 if (inv.Items.Count == 0) sb.Append("  （空）");
+
+                // 装备栏摘要
+                if (equip != null && (equip.WeaponId != null || equip.ChestId != null))
+                {
+                    sb.AppendLine("⚙ 已装备");
+                    if (equip.WeaponId != null)
+                    {
+                        var wDef = Core.Data.ItemRegistry.Instance.Get(equip.WeaponId);
+                        sb.AppendLine($"  ⚔ {wDef?.DisplayName ?? equip.WeaponId}");
+                    }
+                    if (equip.ChestId != null)
+                    {
+                        var aDef = Core.Data.ItemRegistry.Instance.Get(equip.ChestId);
+                        sb.AppendLine($"  🛡 {aDef?.DisplayName ?? equip.ChestId}");
+                    }
+                }
+
                 _inventoryLabel.Text = sb.ToString().TrimEnd();
             }
+        }
+
+        private void UpdateBossBar()
+        {
+            // 查找已进入仇恨状态（Alert 或 Hostile）的 Boss
+            foreach (var id in EcsWorld.Instance.Query<HealthComponent, CreatureStatsComponent, AIComponent>())
+            {
+                var stats = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id)!;
+                var def   = Core.Data.CreatureRegistry.Instance.Get(stats.SpeciesId);
+                if (def?.Tier != Core.Data.CreatureTier.Boss) continue;
+
+                var ai = EcsWorld.Instance.GetComponent<AIComponent>(id)!;
+                // 只有进入 Alert 或 Hostile 状态（即仇恨了玩家）时才显示
+                bool aggrod = ai.CurrentState == FSMState.Alert
+                           || ai.CurrentState == FSMState.Hostile;
+                if (!aggrod) continue;
+
+                var hp = EcsWorld.Instance.GetComponent<HealthComponent>(id)!;
+                _bossPanel.Visible = true;
+                _bossLabel.Text    = $"⚔ {def.DisplayName}  {(int)hp.CurrentHp} / {(int)hp.MaxHp}";
+                _bossBar.Value     = hp.CurrentHp / hp.MaxHp * 100f;
+                return;
+            }
+
+            _bossPanel.Visible = false;
         }
 
         private void UpdateCompanionStatus()

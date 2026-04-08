@@ -6,20 +6,13 @@
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="4_player"]
 [ext_resource type="Script" uid="uid://mk2wejkocipj" path="res://entities/creatures/CreatureSpawner.cs" id="5_spawner"]
 [ext_resource type="Script" uid="uid://dohqs3bu6wqb1" path="res://entities/building/BuildingPlacer.cs" id="6_placer"]
-[ext_resource type="PackedScene" path="res://scenes/ResourceNode.tscn" id="7_resnode"]
 [ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="8_hud"]
-[ext_resource type="PackedScene" path="res://scenes/BerryBush.tscn" id="9_berrybush"]
 [ext_resource type="Script" path="res://ui/BuildMenu.cs" id="10_buildmenu"]
 [ext_resource type="Script" path="res://ui/CreatureTooltip.cs" id="11_tooltip"]
-
-[sub_resource type="PlaneMesh" id="1"]
-size = Vector2(100, 100)
-
-[sub_resource type="StandardMaterial3D" id="3"]
-albedo_color = Color(0.32, 0.52, 0.22, 1)
-
-[sub_resource type="BoxShape3D" id="2"]
-size = Vector3(100, 0.2, 100)
+[ext_resource type="Script" path="res://ui/CraftMenu.cs" id="13_craftmenu"]
+[ext_resource type="Script" path="res://ui/InventoryMenu.cs" id="14_inventorymenu"]
+[ext_resource type="Script" path="res://entities/ProjectileSpawner.cs" id="15_projspawner"]
+[ext_resource type="Script" path="res://world/DayNightController.cs" id="12_daynightctrl"]
 
 [node name="Main" type="Node3D" unique_id=21390962]
 
@@ -35,21 +28,14 @@ script = ExtResource("3_chunkmanager")
 [node name="Environment" type="Node3D" parent="." unique_id=1802701461]
 
 [node name="DirectionalLight" type="DirectionalLight3D" parent="Environment" unique_id=1169958959]
-transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 10, 0)
+transform = Transform3D(1, 0, 0, 0, 0.866025, 0.5, 0, -0.5, 0.866025, 0, 20, 0)
 light_energy = 1.2
 shadow_enabled = true
 
 [node name="WorldEnvironment" type="WorldEnvironment" parent="Environment" unique_id=169723244]
 
-[node name="Ground" type="StaticBody3D" parent="." unique_id=1985799988]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=411262447]
-mesh = SubResource("1")
-surface_material_override/0 = SubResource("3")
-
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=193722311]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
-shape = SubResource("2")
+[node name="DayNightController" type="Node3D" parent="Environment" unique_id=1234567890]
+script = ExtResource("12_daynightctrl")
 
 [node name="Player" parent="." unique_id=2019866272 instance=ExtResource("4_player")]
 
@@ -59,23 +45,6 @@ script = ExtResource("5_spawner")
 [node name="BuildingPlacer" type="Node3D" parent="." unique_id=1547362255]
 script = ExtResource("6_placer")
 
-[node name="Resources" type="Node3D" parent="." unique_id=1010931304]
-
-[node name="Tree1" parent="Resources" unique_id=1439846553 instance=ExtResource("7_resnode")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -2)
-
-[node name="Tree2" parent="Resources" unique_id=34439999 instance=ExtResource("7_resnode")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 3)
-
-[node name="Tree3" parent="Resources" unique_id=1356712337 instance=ExtResource("7_resnode")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 5)
-
-[node name="Tree4" parent="Resources" unique_id=1180679556 instance=ExtResource("7_resnode")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6)
-
-[node name="Tree5" parent="Resources" unique_id=1344359849 instance=ExtResource("7_resnode")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -3)
-
 [node name="HUD" parent="." unique_id=132390367 instance=ExtResource("8_hud")]
 
 [node name="CreatureTooltip" type="CanvasLayer" parent="."]
@@ -84,34 +53,11 @@ script = ExtResource("11_tooltip")
 [node name="BuildMenu" type="CanvasLayer" parent="."]
 script = ExtResource("10_buildmenu")
 
-[node name="Berries" type="Node3D" parent="Resources"]
+[node name="CraftMenu" type="CanvasLayer" parent="."]
+script = ExtResource("13_craftmenu")
 
-[node name="Berry1" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5, 0, 4)
+[node name="InventoryMenu" type="CanvasLayer" parent="."]
+script = ExtResource("14_inventorymenu")
 
-[node name="Berry2" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3, 0, 5)
-
-[node name="Berry3" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1, 0, -4)
-
-[node name="Berry4" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -5, 0, -3)
-
-[node name="Berry5" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 7, 0, -6)
-
-[node name="Berry6" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -6, 0, 7)
-
-[node name="Berry7" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 9, 0, 2)
-
-[node name="Berry8" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4, 0, -8)
-
-[node name="Berry9" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -8, 0, -1)
-
-[node name="Berry10" parent="Resources/Berries" instance=ExtResource("9_berrybush")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 2, 0, 9)
+[node name="ProjectileSpawner" type="Node3D" parent="."]
+script = ExtResource("15_projspawner")

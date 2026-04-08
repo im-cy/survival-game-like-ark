@@ -21,6 +21,11 @@ namespace SurvivalGame.Core.Data
         [Export] public float HungerRestore = 0f;
         [Export] public float ThirstRestore = 0f;
         [Export] public float SedationAmount = 0f;      // 麻醉量（麻醉箭等）
+        [Export] public float AttackDamage      = 0f;     // 武器伤害（0=不是武器）
+        [Export] public float ArmorValue       = 0f;     // 防御值，每次受击减免此值（0=不是防具）
+        [Export] public bool  IsRanged         = false;  // 是否为远程武器
+        [Export] public float ProjectileRange  = 20f;   // 远程最大射程（米）
+        [Export] public string AmmoId          = "";    // 弹药物品 ID（""=无需弹药）
     }
 
     public enum ItemCategory { Material, Food, Tool, Weapon, Armor, Building, Medicine, Blueprint }
@@ -35,17 +40,26 @@ namespace SurvivalGame.Core.Data
         [Export] public string Id = "";
         [Export] public string ResultItemId = "";
         [Export] public int ResultQuantity = 1;
-        [Export] public Godot.Collections.Array<IngredientEntry> Ingredients = new();
         [Export] public string RequiredStation = "";    // "" = 徒手
         [Export] public int RequiredLevel = 1;
         [Export] public string UnlockSource = "level"; // "level" | "boss:forest" | "blueprint"
+
+        // 纯 C# List，避免 Godot.Collections.Array 对 Resource 对象的序列化问题
+        public List<IngredientEntry> Ingredients { get; } = new();
     }
 
-    [GlobalClass]
-    public partial class IngredientEntry : Resource
+    // 普通 C# 类（不继承 Resource），彻底绕开 Godot Variant 序列化
+    public class IngredientEntry
     {
-        [Export] public string ItemId = "";
-        [Export] public int Quantity = 1;
+        public string ItemId   = "";
+        public int    Quantity = 1;
+
+        public IngredientEntry() { }
+        public IngredientEntry(string itemId, int quantity)
+        {
+            ItemId   = itemId;
+            Quantity = quantity;
+        }
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -75,6 +89,12 @@ namespace SurvivalGame.Core.Data
         [Export] public bool CanRide = false;
         [Export] public bool CanFly  = false;
         [Export] public string HarvestResourceType = "";  // "" = 不能自动采集
+
+        // 非 Export — 代码注册时设置
+        public string[] LootTable = System.Array.Empty<string>(); // 格式: "itemId:qty"
+        public float ViewScale      = 1f;    // 占位体缩放倍率
+        public float DetectionRange = 12f;   // 仇恨触发距离（m）
+        public float AttackRange    = 2f;    // 近战攻击距离（m）
     }
 
     public enum CreatureTier { F, D, C, B, A, S, Boss }

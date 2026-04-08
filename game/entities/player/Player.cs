@@ -34,7 +34,13 @@ namespace SurvivalGame.Entities.Player
             EcsWorld.Instance.AddComponent(EntityId, _survival);
             EcsWorld.Instance.AddComponent(EntityId, _position);
             EcsWorld.Instance.AddComponent(EntityId, new HealthComponent { MaxHp = 100f, CurrentHp = 100f });
-            EcsWorld.Instance.AddComponent(EntityId, new PlayerStatsComponent());
+            var pstats = new PlayerStatsComponent();
+            EcsWorld.Instance.AddComponent(EntityId, pstats);
+
+            // 自动解锁一阶配方
+            foreach (var recipe in RecipeRegistry.Instance.All)
+                if (recipe.UnlockSource == "tier1")
+                    pstats.UnlockedRecipes.Add(recipe.Id);
 
             // 初始背包（3 浆果 + 2 水袋）
             var inv = new InventoryComponent();
@@ -42,9 +48,12 @@ namespace SurvivalGame.Entities.Player
             inv.AddItem("water_skin", 2, 0.3f);
             EcsWorld.Instance.AddComponent(EntityId, inv);
 
+            // 装备组件（空槽）
+            EcsWorld.Instance.AddComponent(EntityId, new EquipmentComponent());
+
             RegisterInputActions();
 
-            GD.Print($"[Player] EntityId={EntityId}，初始背包：3×浆果  2×水袋");
+            GD.Print($"[Player] EntityId={EntityId}，初始背包：3×浆果  2×水袋，已解锁一阶配方 {pstats.UnlockedRecipes.Count} 条");
         }
 
         private static void RegisterInputActions()
@@ -64,6 +73,18 @@ namespace SurvivalGame.Entities.Player
                 InputMap.AddAction("give_order");
                 InputMap.ActionAddEvent("give_order", new InputEventKey { Keycode = Key.H });
             }
+            if (!InputMap.HasAction("attack"))
+            {
+                InputMap.AddAction("attack");
+                InputMap.ActionAddEvent("attack", new InputEventMouseButton
+                    { ButtonIndex = MouseButton.Left });
+            }
+            if (!InputMap.HasAction("open_craft"))
+            {
+                InputMap.AddAction("open_craft");
+                InputMap.ActionAddEvent("open_craft", new InputEventKey { Keycode = Key.C });
+            }
+            // inventory 在 project.godot 里已注册，此处无需重复添加
         }
 
         public override void _PhysicsProcess(double delta)
@@ -96,7 +117,10 @@ namespace SurvivalGame.Entities.Player
                 TryInteract();
 
             if (@event.IsActionPressed("inventory"))
+            {
+                GD.Print("[Player] I键：发送 toggle_inventory");
                 EventBus.Instance.Emit("toggle_inventory");
+            }
 
             if (@event.IsActionPressed("consume_food"))
                 TryConsumeFood();
@@ -106,6 +130,12 @@ namespace SurvivalGame.Entities.Player
 
             if (@event.IsActionPressed("give_order"))
                 TryGiveOrder();
+
+            if (@event.IsActionPressed("attack"))
+                TryAttack();
+
+            if (@event.IsActionPressed("open_craft"))
+                EventBus.Instance.Emit("toggle_craft_menu", null);
         }
 
         // ── 鼠标世界坐标（投影到 Y=0 平面）────────────────────────────
@@ -172,8 +202,10 @@ namespace SurvivalGame.Entities.Player
             foreach (var id in EcsWorld.Instance.Query<TamingComponent, PositionComponent>())
             {
                 var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id)!;
-                // 只尝试喂食未驯服的生物
+                // 只尝试喂食未驯服的活体生物
                 if (taming.State == TamingState.Tamed) continue;
+                var aiState = EcsWorld.Instance.GetComponent<AIComponent>(id);
+                if (aiState?.CurrentState == FSMState.Dead) continue;
 
                 var pos = EcsWorld.Instance.GetComponent<PositionComponent>(id)!;
                 float dist = myPos.Position.DistanceTo(pos.Position);
@@ -200,6 +232,16 @@ namespace SurvivalGame.Entities.Player
                 default:
                     return false;
             }
+        }
+
+        // ── 攻击（鼠标左键）───────────────────────────────────────────
+
+        private void TryAttack()
+        {
+            var aimPos = GetMouseWorldPosition() ?? GlobalPosition + Transform.Basis.Z * -2f;
+            bool hit = GameManager.Instance?.Combat?.TryPlayerAttack(EntityId, aimPos) ?? false;
+            if (!hit)
+                GD.Print("[Player] 攻击：范围内没有目标");
         }
 
         // ── 消耗食物（F键）────────────────────────────────────────────

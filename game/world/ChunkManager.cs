@@ -7,7 +7,8 @@ namespace SurvivalGame.World
 {
     /// <summary>
     /// Chunk 流式加载管理器。
-    /// 以玩家为中心维护 ActiveRadius×2+1 的活跃区域，异步加载/卸载边缘块。
+    /// 以玩家为中心维护 ActiveRadius×2+1 的活跃区域，
+    /// 动态创建/销毁 ChunkView 节点。
     /// </summary>
     public partial class ChunkManager : Node
     {
@@ -16,14 +17,20 @@ namespace SurvivalGame.World
         [Export] public int ActiveRadius = 3;
 
         private readonly Dictionary<Vector2I, ChunkData> _loaded = new();
+        private readonly Dictionary<Vector2I, ChunkView> _views  = new();
+
         private ChunkGenerator _generator = null!;
-        private Vector2I _lastPlayerChunk = new Vector2I(int.MaxValue, 0);
+        private Vector2I _lastPlayerChunk  = new Vector2I(int.MaxValue, 0);
 
         public override void _Ready()
         {
-            Instance = this;
-            var wm = WorldManager.Instance!;
+            Instance   = this;
+            var wm     = WorldManager.Instance!;
             _generator = new ChunkGenerator(wm.WorldSeed, new BiomeMap(wm.WorldSeed));
+
+            // 同步预加载出生点周围的块，确保玩家落地有地面碰撞
+            UpdateActiveChunks(Vector2I.Zero);
+            _lastPlayerChunk = Vector2I.Zero;
         }
 
         public override void _Process(double delta)
@@ -34,6 +41,8 @@ namespace SurvivalGame.World
             UpdateActiveChunks(playerChunk);
         }
 
+        // ── Chunk 更新 ────────────────────────────────────────────────
+
         private void UpdateActiveChunks(Vector2I center)
         {
             var needed = new HashSet<Vector2I>();
@@ -41,11 +50,9 @@ namespace SurvivalGame.World
             for (int z = -ActiveRadius; z <= ActiveRadius; z++)
                 needed.Add(center + new Vector2I(x, z));
 
-            // 加载新块
             foreach (var coord in needed.Where(c => !_loaded.ContainsKey(c)))
                 LoadChunk(coord);
 
-            // 卸载超出范围的块
             foreach (var coord in _loaded.Keys.Where(c => !needed.Contains(c)).ToArray())
                 UnloadChunk(coord);
         }
@@ -54,14 +61,27 @@ namespace SurvivalGame.World
         {
             var chunk = _generator.Generate(coord);
             _loaded[coord] = chunk;
+
+            var view = new ChunkView();
+            AddChild(view);         // 先加入场景树，再 Setup（保证 GlobalPosition 有效）
+            view.Setup(chunk);
+            _views[coord] = view;
+
             EventBus.Instance.Emit("chunk_loaded", coord);
         }
 
         private void UnloadChunk(Vector2I coord)
         {
+            if (_views.TryGetValue(coord, out var view))
+            {
+                view.QueueFree();
+                _views.Remove(coord);
+            }
             _loaded.Remove(coord);
             EventBus.Instance.Emit("chunk_unloaded", coord);
         }
+
+        // ── 查询 API ──────────────────────────────────────────────────
 
         public ChunkData? GetChunk(Vector2I coord)
             => _loaded.TryGetValue(coord, out var c) ? c : null;

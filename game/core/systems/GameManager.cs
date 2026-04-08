@@ -24,10 +24,16 @@ namespace SurvivalGame.Core.Systems
         public HarvestSystem   Harvest   { get; private set; } = null!;
         public CampfireSystem  Campfire  { get; private set; } = null!;
         public BuildingSystem  Building  { get; private set; } = null!;
+        public CombatSystem    Combat    { get; private set; } = null!;
+        public CraftingSystem    Crafting    { get; private set; } = null!;
+        public ProjectileSystem  Projectile  { get; private set; } = null!;
 
         public override void _Ready()
         {
             Instance = this;
+
+            // 每次进入游戏场景时重置 ECS 世界，防止编辑器多次运行残留旧实体
+            EcsWorld.Reset();
 
             // 注册硬编码数据（物品、建造件、生物）
             DataSetup.Register();
@@ -40,9 +46,15 @@ namespace SurvivalGame.Core.Systems
             Taming   = Register(new TamingSystem());
             AI       = Register(new AISystem());
             DayNight = Register(new DayNightSystem());
+            Combat     = Register(new CombatSystem());
+            Crafting   = Register(new CraftingSystem());
+            Projectile = Register(new ProjectileSystem());
 
             foreach (var system in _systems)
                 system.Initialize();
+
+            // 订阅 Boss 击败事件 → 解锁二阶配方
+            EventBus.Instance.Subscribe("boss_defeated", OnBossDefeated);
 
             GD.Print("[GameManager] 所有系统已初始化");
 
@@ -60,8 +72,34 @@ namespace SurvivalGame.Core.Systems
             }
 
             // 在玩家出生点周围生成 2 只野猪
-            spawner.SpawnCreature("boar", new Vector3(8f, 0f, 6f));
-            spawner.SpawnCreature("boar", new Vector3(-7f, 0f, 8f));
+            spawner.SpawnCreature("boar", new Vector3(8f,  0f,  6f));
+            spawner.SpawnCreature("boar", new Vector3(-7f, 0f,  8f));
+
+            // 在稍远处生成 Boss（森林守卫者）
+            spawner.SpawnCreature("forest_guardian", new Vector3(25f, 0f, 20f));
+        }
+
+        // ── Boss 击败 → 解锁二阶配方 ─────────────────────────────────
+
+        private void OnBossDefeated(object? payload)
+        {
+            if (payload is not string bossId) return;
+
+            string unlockKey = $"boss:{bossId}";
+            int count = 0;
+
+            foreach (var playerId in EcsWorld.Instance.Query<PlayerStatsComponent>())
+            {
+                var ps = EcsWorld.Instance.GetComponent<PlayerStatsComponent>(playerId)!;
+                foreach (var recipe in RecipeRegistry.Instance.All)
+                {
+                    if (recipe.UnlockSource == unlockKey && ps.UnlockedRecipes.Add(recipe.Id))
+                        count++;
+                }
+            }
+
+            GD.Print($"[GameManager] Boss [{bossId}] 已击败，解锁 {count} 条新配方");
+            EventBus.Instance.Emit("recipes_unlocked", null);
         }
 
         public override void _Process(double delta)
@@ -79,6 +117,7 @@ namespace SurvivalGame.Core.Systems
 
         public override void _ExitTree()
         {
+            EventBus.Instance.Unsubscribe("boss_defeated", OnBossDefeated);
             Instance = null;
         }
     }

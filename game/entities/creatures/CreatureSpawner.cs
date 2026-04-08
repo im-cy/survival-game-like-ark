@@ -42,14 +42,19 @@ namespace SurvivalGame.Entities.Creatures
             });
             EcsWorld.Instance.AddComponent(entityId, new AIComponent
             {
-                DetectionRange = 12f,
-                AttackRange    = 2f,
+                DetectionRange = def.DetectionRange,
+                AttackRange    = def.AttackRange,
+                AttackPower    = def.BaseAttack,
             });
 
             // 直接创建视图节点（不依赖 PackedScene export）
             var view = new CreatureView();
             AddChild(view);
             view.Setup(entityId, def.SpriteSheet);
+
+            // 应用体型缩放（Boss 比普通生物大）
+            if (def.ViewScale != 1f)
+                view.Scale = Vector3.One * def.ViewScale;
 
             GD.Print($"[CreatureSpawner] 生成 {def.DisplayName}（ID={entityId}）@ {worldPos}");
             return entityId;

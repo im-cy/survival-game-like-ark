@@ -69,20 +69,57 @@ namespace SurvivalGame.Core.Systems
         private HarvestResult DoHarvest(int nodeId, InventoryComponent inv, int harvesterId)
         {
             var harvestable = EcsWorld.Instance.GetComponent<HarvestableComponent>(nodeId)!;
-            int qty = _rng.RandiRange(harvestable.YieldMin, harvestable.YieldMax);
 
-            var itemDef = Core.Data.ItemRegistry.Instance.Get(harvestable.ResourceId);
-            float weight = itemDef?.Weight ?? 0.5f;
-            inv.AddItem(harvestable.ResourceId, qty, weight);
+            // 尸体采集：逐项给出战利品
+            var corpse = EcsWorld.Instance.GetComponent<CorpseComponent>(nodeId);
+            if (corpse != null)
+            {
+                if (corpse.RemainingLoot.Count == 0)
+                {
+                    harvestable.Depleted = true;
+                    return HarvestResult.NoTarget;
+                }
+
+                string entry = corpse.RemainingLoot[0];
+                corpse.RemainingLoot.RemoveAt(0);
+
+                string itemId = entry;
+                int qty = 1;
+                var parts = entry.Split(':');
+                if (parts.Length == 2 && int.TryParse(parts[1], out int parsed))
+                {
+                    itemId = parts[0];
+                    qty    = parsed;
+                }
+
+                var itemDef = Core.Data.ItemRegistry.Instance.Get(itemId);
+                inv.AddItem(itemId, qty, itemDef?.Weight ?? 0.5f);
+
+                harvestable.HitsRemaining = corpse.RemainingLoot.Count;
+                if (harvestable.HitsRemaining <= 0)
+                    harvestable.Depleted = true;
+
+                EventBus.Instance.Emit("resource_harvested",
+                    new HarvestEventData(harvesterId, nodeId, itemId, qty, harvestable.Depleted));
+
+                GD.Print($"[Harvest] 采集尸体: {itemId} ×{qty}，剩余={harvestable.HitsRemaining}");
+                return HarvestResult.Success;
+            }
+
+            // 普通资源采集
+            int amount = _rng.RandiRange(harvestable.YieldMin, harvestable.YieldMax);
+            var def = Core.Data.ItemRegistry.Instance.Get(harvestable.ResourceId);
+            float weight = def?.Weight ?? 0.5f;
+            inv.AddItem(harvestable.ResourceId, amount, weight);
 
             harvestable.HitsRemaining--;
             if (harvestable.HitsRemaining <= 0)
                 harvestable.Depleted = true;
 
             EventBus.Instance.Emit("resource_harvested",
-                new HarvestEventData(harvesterId, nodeId, harvestable.ResourceId, qty, harvestable.Depleted));
+                new HarvestEventData(harvesterId, nodeId, harvestable.ResourceId, amount, harvestable.Depleted));
 
-            GD.Print($"[Harvest] 采集 {harvestable.ResourceId} x{qty}，节点剩余次数={harvestable.HitsRemaining}");
+            GD.Print($"[Harvest] 采集 {harvestable.ResourceId} x{amount}，节点剩余次数={harvestable.HitsRemaining}");
             return HarvestResult.Success;
         }
 

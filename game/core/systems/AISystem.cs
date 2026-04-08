@@ -19,6 +19,36 @@ namespace SurvivalGame.Core.Systems
         private float _passiveAccum = 0f;
         private Vector3 _playerPos;
 
+        public override void Initialize()
+        {
+            EventBus.Instance.Subscribe("creature_damaged", OnCreatureDamaged);
+        }
+
+        // 生物被远程攻击时：被动生物逃跑，攻击型生物忽略距离追击
+        private void OnCreatureDamaged(object? payload)
+        {
+            if (payload is not DamageEventData data) return;
+            var ai = EcsWorld.Instance.GetComponent<AIComponent>(data.EntityId);
+            if (ai == null || ai.CurrentState == FSMState.Dead) return;
+
+            var taming = EcsWorld.Instance.GetComponent<TamingComponent>(data.EntityId);
+            bool isPassive = taming?.Method == TamingMethod.Passive;
+
+            if (isPassive)
+            {
+                // 被动生物：逃跑 6 秒
+                ai.CurrentState = FSMState.Flee;
+                ai.StateTimer   = 0f;
+            }
+            else
+            {
+                // 攻击型生物：立即仇恨，忽略距离 10 秒
+                ai.CurrentState          = FSMState.Hostile;
+                ai.AggroIgnoreDistTimer  = 10f;
+                ai.StateTimer            = 0f;
+            }
+        }
+
         public override void Tick(float delta)
         {
             _playerPos   = GetPlayerPosition();
@@ -56,6 +86,14 @@ namespace SurvivalGame.Core.Systems
             var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id);
             var stats  = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id);
             ai.StateTimer += delta;
+            if (ai.AggroIgnoreDistTimer > 0f) ai.AggroIgnoreDistTimer -= delta;
+
+            // 死亡实体不再处理任何 AI 逻辑
+            if (ai.CurrentState == FSMState.Dead)
+            {
+                pos.Velocity = Vector3.Zero;
+                return;
+            }
 
             switch (ai.CurrentState)
             {
@@ -78,6 +116,13 @@ namespace SurvivalGame.Core.Systems
                     break;
 
                 case FSMState.Alert:
+                    // 玩家已经离开了感知范围 → 取消警觉
+                    if (!IsPlayerNear(pos, ai.DetectionRange * 1.5f))
+                    {
+                        ai.CurrentState = FSMState.Wander;
+                        ai.StateTimer = 0f;
+                        break;
+                    }
                     // 警觉 2 秒后：被动型生物进入戒备，攻击型生物追击
                     if (ai.StateTimer > 2f)
                     {
@@ -98,6 +143,15 @@ namespace SurvivalGame.Core.Systems
                     break;
 
                 case FSMState.Hostile:
+                    // 超出追击系留范围（DetectionRange × 3）且无远程仇恨 → 放弃追击，回归游荡
+                    if (pos.Position.DistanceTo(_playerPos) > ai.DetectionRange * 3f
+                        && ai.AggroIgnoreDistTimer <= 0f)
+                    {
+                        ai.CurrentState   = FSMState.Wander;
+                        ai.StateTimer     = 0f;
+                        ai.TargetEntityId = -1;
+                        break;
+                    }
                     ChaseAndAttack(id, ai, pos, delta);
                     break;
 
@@ -136,6 +190,16 @@ namespace SurvivalGame.Core.Systems
                     }
                     HarvestNearby(id, ai, pos, stats, delta);
                     break;
+
+                case FSMState.Flee:
+                    // 远离玩家 6 秒后恢复游荡
+                    FleeFromPlayer(pos, delta);
+                    if (ai.StateTimer > 6f)
+                    {
+                        ai.CurrentState = FSMState.Wander;
+                        ai.StateTimer   = 0f;
+                    }
+                    break;
             }
         }
 
@@ -165,11 +229,12 @@ namespace SurvivalGame.Core.Systems
         private void ChaseAndAttack(int id, AIComponent ai, PositionComponent pos, float delta)
         {
             float speed = 4f;
+            ai.AttackTimer -= delta;
             MoveToward(pos, _playerPos, speed, delta);
-            if (pos.Position.DistanceTo(_playerPos) <= ai.AttackRange)
+            if (pos.Position.DistanceTo(_playerPos) <= ai.AttackRange && ai.AttackTimer <= 0f)
             {
                 EventBus.Instance.Emit("creature_attack", new AttackEventData(id, -1));
-                ai.StateTimer = 0f;
+                ai.AttackTimer = ai.AttackCooldown;
             }
         }
 
@@ -255,9 +320,54 @@ namespace SurvivalGame.Core.Systems
         {
             var dir = (target - pos.Position).Normalized();
             pos.Velocity = dir * speed;
-            pos.Position += pos.Velocity * delta;
+            var newPos = pos.Position + pos.Velocity * delta;
+            newPos = ResolveBuildingCollision(newPos);
+            pos.Position = newPos;
             if (dir.LengthSquared() > 0.01f)
                 pos.FacingAngle = Mathf.Atan2(dir.X, dir.Z);
+        }
+
+        /// <summary>
+        /// 检查新位置是否落入已放置建筑的 AABB，若是则沿最短轴推出。
+        /// 建筑占地尺寸与 BuildingPiece.HouseHalfSize（2 m）一致。
+        /// </summary>
+        private static Vector3 ResolveBuildingCollision(Vector3 newPos)
+        {
+            const float HouseHalf   = 2.0f;
+            const float CreatureRad = 0.4f;          // 生物碰撞半径
+            const float Half        = HouseHalf + CreatureRad;
+
+            foreach (var bid in EcsWorld.Instance.Query<BuildingPieceComponent, PositionComponent>())
+            {
+                var bp = EcsWorld.Instance.GetComponent<BuildingPieceComponent>(bid)!;
+                if (bp.PieceType != BuildingPieceType.House) continue;
+
+                var bpos = EcsWorld.Instance.GetComponent<PositionComponent>(bid)!;
+                float dx = newPos.X - bpos.Position.X;
+                float dz = newPos.Z - bpos.Position.Z;
+
+                if (Mathf.Abs(dx) >= Half || Mathf.Abs(dz) >= Half) continue;
+
+                // 落在建筑 AABB 内 → 沿重叠最小轴推出
+                float overlapX = Half - Mathf.Abs(dx);
+                float overlapZ = Half - Mathf.Abs(dz);
+                if (overlapX < overlapZ)
+                    newPos.X += dx >= 0f ? overlapX : -overlapX;
+                else
+                    newPos.Z += dz >= 0f ? overlapZ : -overlapZ;
+            }
+            return newPos;
+        }
+
+        private void FleeFromPlayer(PositionComponent pos, float delta)
+        {
+            var away = (pos.Position - _playerPos).Normalized();
+            if (away.LengthSquared() < 0.01f) away = Vector3.Right;
+            var newPos = pos.Position + away * 5f * delta;
+            newPos = ResolveBuildingCollision(newPos);
+            pos.Position = newPos;
+            pos.Velocity = away * 5f;
+            pos.FacingAngle = Mathf.Atan2(away.X, away.Z);
         }
 
         private static void MaintainDistance(PositionComponent pos, Vector3 target, float dist, float delta)

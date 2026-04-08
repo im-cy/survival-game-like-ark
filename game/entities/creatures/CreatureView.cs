@@ -46,6 +46,8 @@ namespace SurvivalGame.Entities.Creatures
         public void Setup(int entityId, Texture2D? spriteSheet)
         {
             EntityId = entityId;
+            EventBus.Instance.Subscribe("creature_died", OnCreatureDied);
+
             if (spriteSheet != null && _sprite != null)
             {
                 _sprite.Texture = spriteSheet;
@@ -53,6 +55,17 @@ namespace SurvivalGame.Entities.Creatures
                 if (_placeholder != null) _placeholder.Visible = false;
                 UpdateRegion(0, 0);
             }
+        }
+
+        private void OnCreatureDied(object? payload)
+        {
+            if (payload is int id && id == EntityId)
+                QueueFree();
+        }
+
+        public override void _ExitTree()
+        {
+            EventBus.Instance.Unsubscribe("creature_died", OnCreatureDied);
         }
 
         public override void _Process(double delta)

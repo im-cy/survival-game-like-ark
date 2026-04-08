@@ -11,7 +11,7 @@ namespace SurvivalGame.Core.Systems
     {
         public static DayNightSystem? Instance { get; private set; }
 
-        [Export] public float DayDurationSeconds = 1200f;  // 20 分钟一天
+        public float DayDurationSeconds = 300f;   // 5 分钟一天（测试用，可按需调大）
 
         public float TimeOfDay { get; private set; } = 0.25f;  // 0=午夜, 0.25=日出, 0.5=正午, 0.75=日落
         public int DayCount { get; private set; } = 1;
