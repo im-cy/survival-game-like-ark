@@ -1,77 +1,76 @@
-[gd_scene load_steps=13 format=3 uid="uid://main_scene"]
+[gd_scene format=3 uid="uid://ckxwhdw7sfwjy"]
 
-[ext_resource type="Script" path="res://core/systems/GameManager.cs" id="1_gamemanager"]
-[ext_resource type="Script" path="res://world/WorldManager.cs" id="2_worldmanager"]
-[ext_resource type="Script" path="res://world/ChunkManager.cs" id="3_chunkmanager"]
+[ext_resource type="Script" uid="uid://be0qsll1uap5y" path="res://core/systems/GameManager.cs" id="1_gamemanager"]
+[ext_resource type="Script" uid="uid://bcv2uk0mhc8v3" path="res://world/WorldManager.cs" id="2_worldmanager"]
+[ext_resource type="Script" uid="uid://ctosjxa2i05nd" path="res://world/ChunkManager.cs" id="3_chunkmanager"]
 [ext_resource type="PackedScene" path="res://scenes/Player.tscn" id="4_player"]
-[ext_resource type="Script" path="res://entities/creatures/CreatureSpawner.cs" id="5_spawner"]
-[ext_resource type="Script" path="res://entities/building/BuildingPlacer.cs" id="6_placer"]
+[ext_resource type="Script" uid="uid://mk2wejkocipj" path="res://entities/creatures/CreatureSpawner.cs" id="5_spawner"]
+[ext_resource type="Script" uid="uid://dohqs3bu6wqb1" path="res://entities/building/BuildingPlacer.cs" id="6_placer"]
 [ext_resource type="PackedScene" path="res://scenes/ResourceNode.tscn" id="7_resnode"]
 [ext_resource type="PackedScene" path="res://ui/HUD.tscn" id="8_hud"]
 
 [sub_resource type="PlaneMesh" id="1"]
 size = Vector2(100, 100)
 
-[sub_resource type="BoxShape3D" id="2"]
-size = Vector3(100, 0.2, 100)
-
 [sub_resource type="StandardMaterial3D" id="3"]
 albedo_color = Color(0.32, 0.52, 0.22, 1)
 
-[node name="Main" type="Node3D"]
+[sub_resource type="BoxShape3D" id="2"]
+size = Vector3(100, 0.2, 100)
 
-[node name="GameManager" type="Node" parent="."]
+[node name="Main" type="Node3D" unique_id=21390962]
+
+[node name="GameManager" type="Node" parent="." unique_id=1780834957]
 script = ExtResource("1_gamemanager")
 
-[node name="WorldManager" type="Node3D" parent="."]
+[node name="WorldManager" type="Node3D" parent="." unique_id=2070752219]
 script = ExtResource("2_worldmanager")
 
-[node name="ChunkManager" type="Node" parent="."]
+[node name="ChunkManager" type="Node" parent="." unique_id=1322368429]
 script = ExtResource("3_chunkmanager")
 
-[node name="Environment" type="Node3D" parent="."]
+[node name="Environment" type="Node3D" parent="." unique_id=1802701461]
 
-[node name="DirectionalLight" type="DirectionalLight3D" parent="Environment"]
+[node name="DirectionalLight" type="DirectionalLight3D" parent="Environment" unique_id=1169958959]
 transform = Transform3D(0.866025, -0.433013, 0.25, 0, 0.5, 0.866025, -0.5, -0.75, 0.433013, 0, 10, 0)
 light_energy = 1.2
 shadow_enabled = true
 
-[node name="WorldEnvironment" type="WorldEnvironment" parent="Environment"]
+[node name="WorldEnvironment" type="WorldEnvironment" parent="Environment" unique_id=169723244]
 
-[node name="Ground" type="StaticBody3D" parent="."]
+[node name="Ground" type="StaticBody3D" parent="." unique_id=1985799988]
 
-[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground"]
+[node name="MeshInstance3D" type="MeshInstance3D" parent="Ground" unique_id=411262447]
 mesh = SubResource("1")
 surface_material_override/0 = SubResource("3")
 
-[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground"]
-shape = SubResource("2")
+[node name="CollisionShape3D" type="CollisionShape3D" parent="Ground" unique_id=193722311]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.1, 0)
+shape = SubResource("2")
 
-[node name="Player" parent="." instance=ExtResource("4_player")]
-transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0, 0)
+[node name="Player" parent="." unique_id=2019866272 instance=ExtResource("4_player")]
 
-[node name="CreatureSpawner" type="Node" parent="."]
+[node name="CreatureSpawner" type="Node" parent="." unique_id=120781146]
 script = ExtResource("5_spawner")
 
-[node name="BuildingPlacer" type="Node3D" parent="."]
+[node name="BuildingPlacer" type="Node3D" parent="." unique_id=1547362255]
 script = ExtResource("6_placer")
 
-[node name="Resources" type="Node3D" parent="."]
+[node name="Resources" type="Node3D" parent="." unique_id=1010931304]
 
-[node name="Tree1" parent="Resources" instance=ExtResource("7_resnode")]
+[node name="Tree1" parent="Resources" unique_id=1439846553 instance=ExtResource("7_resnode")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 3, 0, -2)
 
-[node name="Tree2" parent="Resources" instance=ExtResource("7_resnode")]
+[node name="Tree2" parent="Resources" unique_id=34439999 instance=ExtResource("7_resnode")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4, 0, 3)
 
-[node name="Tree3" parent="Resources" instance=ExtResource("7_resnode")]
+[node name="Tree3" parent="Resources" unique_id=1356712337 instance=ExtResource("7_resnode")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 6, 0, 5)
 
-[node name="Tree4" parent="Resources" instance=ExtResource("7_resnode")]
+[node name="Tree4" parent="Resources" unique_id=1180679556 instance=ExtResource("7_resnode")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -2, 0, -6)
 
-[node name="Tree5" parent="Resources" instance=ExtResource("7_resnode")]
+[node name="Tree5" parent="Resources" unique_id=1344359849 instance=ExtResource("7_resnode")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 8, 0, -3)
 
-[node name="HUD" parent="." instance=ExtResource("8_hud")]
+[node name="HUD" parent="." unique_id=132390367 instance=ExtResource("8_hud")]

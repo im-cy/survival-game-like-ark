@@ -1,8 +1,9 @@
-[gd_scene load_steps=5 format=3 uid="uid://player_scene"]
+[gd_scene load_steps=6 format=3 uid="uid://player_scene"]
 
 [ext_resource type="Script" path="res://entities/player/Player.cs" id="1_player"]
 [ext_resource type="Script" path="res://entities/player/PlayerCamera.cs" id="2_camera"]
 [ext_resource type="Script" path="res://entities/player/PlayerView.cs" id="3_playerview"]
+[ext_resource type="Texture2D" path="res://assets/sprites/player.png" id="4_player_tex"]
 
 [sub_resource type="CapsuleShape3D" id="1"]
 radius = 0.4
@@ -19,7 +20,10 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
 billboard = 1
 pixel_size = 0.02
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.9, 0)
+texture = ExtResource("4_player_tex")
 script = ExtResource("3_playerview")
+frame_count_x = 6
+frame_count_y = 6
 
 [node name="PlayerCamera" type="Camera3D" parent="." groups=["main_camera"]]
 script = ExtResource("2_camera")

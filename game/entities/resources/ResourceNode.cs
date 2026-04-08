@@ -27,11 +27,14 @@ namespace SurvivalGame.Entities.Resources
             _sprite      = GetNode<Sprite3D>("Sprite3D");
             _placeholder = GetNode<MeshInstance3D>("Placeholder");
 
-            // 有美术素材时显示精灵，否则保留占位几何体
+            // 若在编辑器里已给 Sprite3D 赋了贴图，则隐藏占位几何体
+            // 若通过 Export 的 SpriteSheet 传入，优先使用
             if (SpriteSheet != null)
+                _sprite.Texture = SpriteSheet;
+
+            if (_sprite.Texture != null)
             {
-                _sprite.Texture  = SpriteSheet;
-                _sprite.Visible  = true;
+                _sprite.Visible      = true;
                 _placeholder.Visible = false;
             }
 

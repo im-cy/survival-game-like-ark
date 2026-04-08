@@ -28,8 +28,8 @@ namespace SurvivalGame.Core.Systems
                 if (s.Hunger <= 0f) h.TakeDamage(1f * delta);
                 if (s.Thirst <= 0f) h.TakeDamage(2f * delta);
 
-                // ── 体温伤害 ─────────────────────────────────────────────
-                if (s.Temperature < 30f || s.Temperature > 42f)
+                // ── 体温伤害（仅极端值触发，M1 阶段正常环境不应扣血）───────
+                if (s.Temperature < 10f || s.Temperature > 50f)
                     h.TakeDamage(TempDamagePerSec * delta);
 
                 // ── 体温更新 ─────────────────────────────────────────────
@@ -46,7 +46,7 @@ namespace SurvivalGame.Core.Systems
         private void UpdateTemperature(int entityId, SurvivalComponent s, float delta)
         {
             var pos = EcsWorld.Instance.GetComponent<PositionComponent>(entityId);
-            float biomeTemp = WorldManager.Instance?.GetBiomeTemperature(pos?.Position ?? Vector3.Zero) ?? 22f;
+            float biomeTemp = WorldManager.Instance?.GetBiomeTemperature(pos?.Position ?? Vector3.Zero) ?? 37f;
             float timeTemp  = DayNightSystem.Instance?.GetTemperatureModifier() ?? 0f;
             float target    = biomeTemp + timeTemp;
             s.Temperature   = Mathf.Lerp(s.Temperature, target, 0.05f * delta);
