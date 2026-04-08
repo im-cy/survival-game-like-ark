@@ -1,5 +1,6 @@
 using Godot;
 using SurvivalGame.Core.ECS;
+using SurvivalGame.Core.Data;
 
 namespace SurvivalGame.Core.Systems
 {
@@ -46,8 +47,10 @@ namespace SurvivalGame.Core.Systems
             var taming = EcsWorld.Instance.GetComponent<TamingComponent>(creatureId);
             var inv    = EcsWorld.Instance.GetComponent<InventoryComponent>(playerId);
             if (taming == null || inv == null) return TamingFeedResult.InvalidTarget;
-            if (taming.State == TamingState.Wild) return TamingFeedResult.Hostile;
-            if (taming.State == TamingState.Tamed)   return TamingFeedResult.AlreadyTamed;
+            // 击晕驯养型生物需先麻醉，被动型可直接喂食
+            if (taming.State == TamingState.Wild && taming.Method == TamingMethod.Knockout)
+                return TamingFeedResult.Hostile;
+            if (taming.State == TamingState.Tamed) return TamingFeedResult.AlreadyTamed;
 
             // 优先用偏好食物
             bool hasPreferred = inv.CountItem(taming.PreferredFood) > 0;
@@ -105,12 +108,21 @@ namespace SurvivalGame.Core.Systems
             stats.OwnerId = playerId;
             stats.CurrentOrder = AIBehaviorOrder.Follow;
 
+            // 立即切换 FSM 状态为跟随，否则 Cautious 状态会继续驱使生物后退
+            var ai = EcsWorld.Instance.GetComponent<AIComponent>(creatureId);
+            if (ai != null)
+            {
+                ai.CurrentState = FSMState.Follow;
+                ai.StateTimer   = 0f;
+            }
+
             // 驯养效率影响最终属性上限
             float eff = taming.TamingEffectiveness / 100f;
             health.MaxHp *= eff;
             health.CurrentHp = health.MaxHp;
 
             EventBus.Instance.Emit("creature_tamed", new TamedEventData(playerId, creatureId));
+            GD.Print($"[Taming] 驯服完成！生物ID={creatureId}，归玩家ID={playerId}");
         }
 
         private void AbandonCreature(int entityId, CreatureStatsComponent stats)
@@ -123,11 +135,14 @@ namespace SurvivalGame.Core.Systems
             EventBus.Instance.Emit("creature_abandoned", entityId);
         }
 
-        private string FindAnyFood(InventoryComponent inv)
+        private static string FindAnyFood(InventoryComponent inv)
         {
-            // 简单实现：找第一个 "food_" 前缀物品
+            // 查找背包中任意可恢复饥饿度的物品
             foreach (var item in inv.Items)
-                if (item.ItemId.StartsWith("food_")) return item.ItemId;
+            {
+                var def = ItemRegistry.Instance.Get(item.ItemId);
+                if (def != null && def.HungerRestore > 0f) return item.ItemId;
+            }
             return "";
         }
     }

@@ -54,6 +54,7 @@ namespace SurvivalGame.Core.Systems
         private void TickFSM(int id, AIComponent ai, PositionComponent pos, float delta)
         {
             var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id);
+            var stats  = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id);
             ai.StateTimer += delta;
 
             switch (ai.CurrentState)
@@ -61,16 +62,37 @@ namespace SurvivalGame.Core.Systems
                 case FSMState.Wander:
                     Wander(id, ai, pos, delta);
                     if (IsPlayerNear(pos, ai.DetectionRange))
-                        ai.CurrentState = taming?.State == TamingState.Tamed
-                            ? FSMState.Follow : FSMState.Alert;
+                    {
+                        if (taming?.State == TamingState.Tamed)
+                        {
+                            // 已驯服 → 执行指令
+                            ai.CurrentState = stats?.CurrentOrder == AIBehaviorOrder.Harvest
+                                ? FSMState.Harvest : FSMState.Follow;
+                        }
+                        else
+                        {
+                            ai.CurrentState = FSMState.Alert;
+                        }
+                        ai.StateTimer = 0f;
+                    }
                     break;
 
                 case FSMState.Alert:
-                    // 警觉 2 秒后根据驯养状态决定行为
+                    // 警觉 2 秒后：被动型生物进入戒备，攻击型生物追击
                     if (ai.StateTimer > 2f)
                     {
-                        ai.CurrentState = taming?.State == TamingState.Cautious
-                            ? FSMState.Cautious : FSMState.Hostile;
+                        bool isPassive = taming?.Method == TamingMethod.Passive;
+                        if (isPassive)
+                        {
+                            // 被动生物：进入戒备，可喂食驯养
+                            if (taming != null && taming.State == TamingState.Wild)
+                                taming.State = TamingState.Cautious;
+                            ai.CurrentState = FSMState.Cautious;
+                        }
+                        else
+                        {
+                            ai.CurrentState = FSMState.Hostile;
+                        }
                         ai.StateTimer = 0f;
                     }
                     break;
@@ -82,10 +104,22 @@ namespace SurvivalGame.Core.Systems
                 case FSMState.Cautious:
                     // 等待玩家喂食，保持距离 3m
                     MaintainDistance(pos, _playerPos, 3f, delta);
+                    // 喂食后进入 Bonding，同步 FSM → 留在 Cautious 等待下次喂食
+                    if (taming?.State == TamingState.Bonding)
+                        ai.CurrentState = FSMState.Cautious; // 保持，让玩家继续喂
                     break;
 
                 case FSMState.Follow:
-                    FollowPlayer(id, pos, delta);
+                    // 驯服后根据当前指令执行
+                    if (stats?.CurrentOrder == AIBehaviorOrder.Harvest)
+                    {
+                        ai.CurrentState = FSMState.Harvest;
+                        ai.StateTimer = 0f;
+                    }
+                    else
+                    {
+                        FollowPlayer(id, pos, delta);
+                    }
                     break;
 
                 case FSMState.Guard:
@@ -93,7 +127,14 @@ namespace SurvivalGame.Core.Systems
                     break;
 
                 case FSMState.Harvest:
-                    HarvestNearby(id, ai, pos, delta);
+                    // 如果被取消了采集指令，回到跟随
+                    if (stats?.CurrentOrder != AIBehaviorOrder.Harvest)
+                    {
+                        ai.CurrentState = FSMState.Follow;
+                        ai.StateTimer = 0f;
+                        break;
+                    }
+                    HarvestNearby(id, ai, pos, stats, delta);
                     break;
             }
         }
@@ -127,7 +168,6 @@ namespace SurvivalGame.Core.Systems
             MoveToward(pos, _playerPos, speed, delta);
             if (pos.Position.DistanceTo(_playerPos) <= ai.AttackRange)
             {
-                // TODO: 触发攻击动画 + 伤害，通过 EventBus 通知
                 EventBus.Instance.Emit("creature_attack", new AttackEventData(id, -1));
                 ai.StateTimer = 0f;
             }
@@ -141,13 +181,74 @@ namespace SurvivalGame.Core.Systems
 
         private void GuardPosition(int id, AIComponent ai, PositionComponent pos, float delta)
         {
-            // 守卫目标点，感知范围内有敌人则攻击
             MoveToward(pos, ai.Destination, 3f, delta);
         }
 
-        private void HarvestNearby(int id, AIComponent ai, PositionComponent pos, float delta)
+        private void HarvestNearby(int id, AIComponent ai, PositionComponent pos, CreatureStatsComponent stats, float delta)
         {
-            // TODO: 寻找最近可采集资源节点，移动并触发采集
+            const float HarvestRange = 1.5f;
+            const float HarvestCooldown = 2.5f;
+
+            // 寻找最近的符合资源类型的可采集节点
+            if (ai.TargetEntityId < 0 || !HasValidTarget(ai.TargetEntityId, stats.HarvestResourceType))
+            {
+                ai.TargetEntityId = FindNearestHarvestable(pos.Position, stats.HarvestResourceType);
+                if (ai.TargetEntityId < 0)
+                {
+                    // 没有可采集目标 → 回到跟随玩家
+                    MoveToward(pos, _playerPos, 3f, delta);
+                    return;
+                }
+            }
+
+            var targetPos = EcsWorld.Instance.GetComponent<PositionComponent>(ai.TargetEntityId);
+            if (targetPos == null) { ai.TargetEntityId = -1; return; }
+
+            float dist = pos.Position.DistanceTo(targetPos.Position);
+            if (dist > HarvestRange)
+            {
+                // 移动到资源节点旁边
+                MoveToward(pos, targetPos.Position, 3f, delta);
+            }
+            else
+            {
+                // 到达 → 等待冷却后采集
+                pos.Velocity = Vector3.Zero;
+                if (ai.StateTimer >= HarvestCooldown)
+                {
+                    int ownerId = stats.OwnerId;
+                    var ownerInv = ownerId >= 0
+                        ? EcsWorld.Instance.GetComponent<InventoryComponent>(ownerId)
+                        : null;
+                    GameManager.Instance?.Harvest?.TryHarvestAt(ai.TargetEntityId, ownerInv);
+                    ai.StateTimer = 0f;
+                    GD.Print($"[AI] 生物ID={id} 正在采集资源ID={ai.TargetEntityId}");
+                }
+            }
+        }
+
+        private static bool HasValidTarget(int targetId, string? resourceType)
+        {
+            var h = EcsWorld.Instance.GetComponent<HarvestableComponent>(targetId);
+            if (h == null || h.Depleted) return false;
+            if (!string.IsNullOrEmpty(resourceType) && h.ResourceId != resourceType) return false;
+            return true;
+        }
+
+        private static int FindNearestHarvestable(Vector3 from, string? resourceType)
+        {
+            int bestId = -1;
+            float bestDist = float.MaxValue;
+            foreach (var id in EcsWorld.Instance.Query<HarvestableComponent, PositionComponent>())
+            {
+                var h = EcsWorld.Instance.GetComponent<HarvestableComponent>(id)!;
+                if (h.Depleted) continue;
+                if (!string.IsNullOrEmpty(resourceType) && h.ResourceId != resourceType) continue;
+                var p = EcsWorld.Instance.GetComponent<PositionComponent>(id)!;
+                float d = from.DistanceTo(p.Position);
+                if (d < bestDist) { bestDist = d; bestId = id; }
+            }
+            return bestId;
         }
 
         private static void MoveToward(PositionComponent pos, Vector3 target, float speed, float delta)
@@ -155,7 +256,6 @@ namespace SurvivalGame.Core.Systems
             var dir = (target - pos.Position).Normalized();
             pos.Velocity = dir * speed;
             pos.Position += pos.Velocity * delta;
-            // 朝向更新（视图层 CreatureView 会读取这个值）
             if (dir.LengthSquared() > 0.01f)
                 pos.FacingAngle = Mathf.Atan2(dir.X, dir.Z);
         }
@@ -167,6 +267,11 @@ namespace SurvivalGame.Core.Systems
             {
                 var away = (pos.Position - target).Normalized();
                 pos.Position += away * 2f * delta;
+                pos.Velocity = away * 2f;
+            }
+            else
+            {
+                pos.Velocity = Vector3.Zero;
             }
         }
 
@@ -174,10 +279,7 @@ namespace SurvivalGame.Core.Systems
             => pos.Position.DistanceTo(_playerPos) < range;
 
         private static Vector3 GetPlayerPosition()
-        {
-            // 通过 EventBus 或 WorldManager 获取玩家位置
-            return WorldManager.Instance?.PlayerPosition ?? Vector3.Zero;
-        }
+            => WorldManager.Instance?.PlayerPosition ?? Vector3.Zero;
     }
 
     public record AttackEventData(int AttackerId, int TargetId);

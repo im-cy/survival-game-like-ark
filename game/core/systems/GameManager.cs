@@ -2,6 +2,7 @@ using Godot;
 using System.Collections.Generic;
 using SurvivalGame.Core.ECS;
 using SurvivalGame.Core.Data;
+using SurvivalGame.Entities.Creatures;
 
 namespace SurvivalGame.Core.Systems
 {
@@ -27,7 +28,7 @@ namespace SurvivalGame.Core.Systems
         {
             Instance = this;
 
-            // 注册硬编码数据（物品、建造件）
+            // 注册硬编码数据（物品、建造件、生物）
             DataSetup.Register();
 
             // 注册系统（顺序即执行顺序）
@@ -42,6 +43,23 @@ namespace SurvivalGame.Core.Systems
                 system.Initialize();
 
             GD.Print("[GameManager] 所有系统已初始化");
+
+            // 场景树就绪后再生成生物（避免 CreatureSpawner 未就绪）
+            CallDeferred(nameof(SpawnInitialCreatures));
+        }
+
+        private void SpawnInitialCreatures()
+        {
+            var spawner = CreatureSpawner.Instance;
+            if (spawner == null)
+            {
+                GD.PrintErr("[GameManager] CreatureSpawner 未就绪，跳过生物生成");
+                return;
+            }
+
+            // 在玩家出生点周围生成 2 只野猪
+            spawner.SpawnCreature("boar", new Vector3(8f, 0f, 6f));
+            spawner.SpawnCreature("boar", new Vector3(-7f, 0f, 8f));
         }
 
         public override void _Process(double delta)

@@ -11,8 +11,6 @@ namespace SurvivalGame.Entities.Creatures
     {
         public static CreatureSpawner? Instance { get; private set; }
 
-        [Export] public PackedScene CreatureViewScene = null!;
-
         public override void _Ready() => Instance = this;
 
         /// <summary>在指定世界坐标生成一只生物</summary>
@@ -48,14 +46,12 @@ namespace SurvivalGame.Entities.Creatures
                 AttackRange    = 2f,
             });
 
-            // 实例化视图节点
-            if (CreatureViewScene != null)
-            {
-                var view = CreatureViewScene.Instantiate<CreatureView>();
-                view.Setup(entityId, def.SpriteSheet);
-                AddChild(view);
-            }
+            // 直接创建视图节点（不依赖 PackedScene export）
+            var view = new CreatureView();
+            AddChild(view);
+            view.Setup(entityId, def.SpriteSheet);
 
+            GD.Print($"[CreatureSpawner] 生成 {def.DisplayName}（ID={entityId}）@ {worldPos}");
             return entityId;
         }
 

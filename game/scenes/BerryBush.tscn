@@ -1,6 +1,6 @@
 [gd_scene load_steps=5 format=3 uid="uid://berry_bush_scene"]
 
-[ext_resource type="Script" path="res://entities/resources/ResourceNode.cs" id="1_rn"]
+[ext_resource type="Script" path="res://entities/resources/BerryBushNode.cs" id="1_rn"]
 [ext_resource type="Texture2D" path="res://assets/sprites/berry_bush.png" id="2_tex"]
 
 [sub_resource type="SphereMesh" id="1"]
@@ -12,10 +12,6 @@ albedo_color = Color(0.22, 0.58, 0.18, 1)
 
 [node name="BerryBush" type="Node3D"]
 script = ExtResource("1_rn")
-resource_id = "berry"
-yield_min = 2
-yield_max = 4
-hits_total = 5
 
 [node name="Placeholder" type="MeshInstance3D" parent="."]
 mesh = SubResource("1")

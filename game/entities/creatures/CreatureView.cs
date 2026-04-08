@@ -6,6 +6,7 @@ namespace SurvivalGame.Entities.Creatures
     /// <summary>
     /// 生物视图节点 — 每个活跃生物对应一个 Node3D 实例。
     /// 通过 EntityId 从 ECS World 读取数据并驱动 Sprite3D Billboard。
+    /// 无贴图时回退为胶囊体占位网格。
     /// </summary>
     public partial class CreatureView : Node3D
     {
@@ -15,25 +16,41 @@ namespace SurvivalGame.Entities.Creatures
 
         public int EntityId { get; set; } = -1;
 
-        private Sprite3D _sprite = null!;
+        private Sprite3D? _sprite;
+        private MeshInstance3D? _placeholder;
         private float _animTimer = 0f;
         private int _currentFrame = 0;
 
         public override void _Ready()
         {
+            // Sprite3D（有贴图时使用）
             _sprite = new Sprite3D();
             _sprite.Billboard = BaseMaterial3D.BillboardModeEnum.Enabled;
             _sprite.RegionEnabled = true;
-            _sprite.PixelSize = 0.02f;  // 调整纸片人大小
+            _sprite.PixelSize = 0.015f;
+            _sprite.Visible = false;
             AddChild(_sprite);
+
+            // 占位胶囊体（无贴图时显示）
+            _placeholder = new MeshInstance3D();
+            _placeholder.Mesh = new CapsuleMesh { Radius = 0.35f, Height = 1.0f };
+            _placeholder.MaterialOverride = new StandardMaterial3D
+            {
+                AlbedoColor = new Color(0.72f, 0.45f, 0.18f)   // 棕色猪
+            };
+            _placeholder.Position = new Vector3(0f, 0.5f, 0f);
+            _placeholder.Visible = true;
+            AddChild(_placeholder);
         }
 
         public void Setup(int entityId, Texture2D? spriteSheet)
         {
             EntityId = entityId;
-            if (spriteSheet != null)
+            if (spriteSheet != null && _sprite != null)
             {
                 _sprite.Texture = spriteSheet;
+                _sprite.Visible = true;
+                if (_placeholder != null) _placeholder.Visible = false;
                 UpdateRegion(0, 0);
             }
         }
@@ -48,31 +65,35 @@ namespace SurvivalGame.Entities.Creatures
             // 同步 3D 位置
             GlobalPosition = pos.Position;
 
-            // 根据朝向选择精灵列
-            int dirCol = AngleToDirectionColumn(pos.FacingAngle);
-
-            // 播放行走动画
             bool isMoving = pos.Velocity.LengthSquared() > 0.1f;
-            if (isMoving)
-            {
-                _animTimer += (float)delta;
-                if (_animTimer >= FrameTime)
-                {
-                    _animTimer = 0f;
-                    _currentFrame = (_currentFrame + 1) % FrameCountY;
-                }
-            }
-            else
-            {
-                _currentFrame = 0;
-            }
 
-            UpdateRegion(dirCol, _currentFrame);
+            if (_sprite != null && _sprite.Visible)
+            {
+                // 根据朝向选择精灵列
+                int dirCol = AngleToDirectionColumn(pos.FacingAngle);
+
+                // 播放行走动画
+                if (isMoving)
+                {
+                    _animTimer += (float)delta;
+                    if (_animTimer >= FrameTime)
+                    {
+                        _animTimer = 0f;
+                        _currentFrame = (_currentFrame + 1) % FrameCountY;
+                    }
+                }
+                else
+                {
+                    _currentFrame = 0;
+                }
+
+                UpdateRegion(dirCol, _currentFrame);
+            }
         }
 
         private void UpdateRegion(int col, int row)
         {
-            if (_sprite.Texture == null) return;
+            if (_sprite?.Texture == null) return;
             int w = (int)_sprite.Texture.GetWidth()  / FrameCountX;
             int h = (int)_sprite.Texture.GetHeight() / FrameCountY;
             _sprite.RegionRect = new Rect2(col * w, row * h, w, h);
@@ -80,7 +101,6 @@ namespace SurvivalGame.Entities.Creatures
 
         private int AngleToDirectionColumn(float angle)
         {
-            // 将朝向角度映射到 0..FrameCountX-1
             float normalized = ((angle / Mathf.Tau) + 1f) % 1f;
             return (int)(normalized * FrameCountX) % FrameCountX;
         }

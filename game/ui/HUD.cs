@@ -4,7 +4,7 @@ using SurvivalGame.Core.Systems;
 
 namespace SurvivalGame.UI
 {
-    /// <summary>HUD — 状态条（生命/饥饿/口渴/体力）、时间、背包。</summary>
+    /// <summary>HUD — 状态条（生命/饥饿/口渴/体力）、时间、背包、驯养状态。</summary>
     public partial class HUD : CanvasLayer
     {
         // 状态条引用（代码生成）
@@ -20,6 +20,8 @@ namespace SurvivalGame.UI
         private Label _dayLabel       = null!;
         private Label _inventoryLabel = null!;
         private Label _tempLabel      = null!;
+        private Label _hintLabel      = null!;
+        private Label _companionLabel = null!;
 
         private int _playerEntityId = -1;
 
@@ -44,7 +46,6 @@ namespace SurvivalGame.UI
 
         private void BuildStatusPanel()
         {
-            // 外层面板
             var panel = new PanelContainer();
             panel.OffsetLeft = 12;
             panel.OffsetTop  = 12;
@@ -98,7 +99,7 @@ namespace SurvivalGame.UI
             _thirstBar  = bars[2]; _thirstVal  = vals[2];
             _staminaBar = bars[3]; _staminaVal = vals[3];
 
-            // ── 体温行（文字，不用进度条）─────────────────────────────
+            // ── 体温行 ────────────────────────────────────────────────
             var tempRow = new HBoxContainer();
             tempRow.AddThemeConstantOverride("separation", 6);
             tempRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
@@ -115,11 +116,17 @@ namespace SurvivalGame.UI
 
             vbox.AddChild(tempRow);
 
-            // ── 操作提示行 ───────────────────────────────────────────
-            var hintLbl = new Label { Text = "E=采集  F=食用  B=建造" };
-            hintLbl.AddThemeColorOverride("font_color", new Color(0.65f, 0.65f, 0.65f));
-            hintLbl.AddThemeConstantOverride("font_size", 11);
-            vbox.AddChild(hintLbl);
+            // ── 伴侣状态行 ────────────────────────────────────────────
+            _companionLabel = new Label { Text = "" };
+            _companionLabel.AddThemeColorOverride("font_color", new Color(0.85f, 0.85f, 0.4f));
+            _companionLabel.AddThemeConstantOverride("font_size", 11);
+            vbox.AddChild(_companionLabel);
+
+            // ── 操作提示行 ────────────────────────────────────────────
+            _hintLabel = new Label { Text = "E=采集/喂食  F=食用  B=建造  H=指令" };
+            _hintLabel.AddThemeColorOverride("font_color", new Color(0.65f, 0.65f, 0.65f));
+            _hintLabel.AddThemeConstantOverride("font_size", 11);
+            vbox.AddChild(_hintLabel);
         }
 
         // ── 每帧更新 ──────────────────────────────────────────────────────
@@ -143,17 +150,20 @@ namespace SurvivalGame.UI
             SetBar(_thirstBar,  _thirstVal,  s.Thirst,  $"{(int)s.Thirst}");
             SetBar(_staminaBar, _staminaVal, s.Stamina, $"{(int)s.Stamina}");
 
-            // 体温显示（颜色：正常=绿，偏冷=蓝，过冷/热=红）
+            // 体温显示
             float temp = s.Temperature;
             _tempLabel.Text = $"{temp:F1}°C";
             Color tempColor;
             if (temp < 10f || temp > 50f)
-                tempColor = new Color(1f, 0.25f, 0.25f);   // 危险（红）
+                tempColor = new Color(1f, 0.25f, 0.25f);
             else if (temp < 20f || temp > 42f)
-                tempColor = new Color(1f, 0.75f, 0.2f);    // 警告（橙）
+                tempColor = new Color(1f, 0.75f, 0.2f);
             else
-                tempColor = new Color(0.5f, 1f, 0.5f);     // 正常（绿）
+                tempColor = new Color(0.5f, 1f, 0.5f);
             _tempLabel.AddThemeColorOverride("font_color", tempColor);
+
+            // 伴侣状态（驯服进度 / 已驯服指令状态）
+            UpdateCompanionStatus();
 
             var inv = EcsWorld.Instance.GetComponent<InventoryComponent>(_playerEntityId);
             if (inv != null)
@@ -164,6 +174,44 @@ namespace SurvivalGame.UI
                 if (inv.Items.Count == 0) sb.Append("  （空）");
                 _inventoryLabel.Text = sb.ToString().TrimEnd();
             }
+        }
+
+        private void UpdateCompanionStatus()
+        {
+            // 先查找驯养中的生物（显示驯养进度）
+            foreach (var id in EcsWorld.Instance.Query<TamingComponent, PositionComponent>())
+            {
+                var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id)!;
+                // 仅在玩家已主动喂食后（Bonding）才显示进度，Cautious 阶段由悬停面板负责
+                if (taming.State == TamingState.Bonding)
+                {
+                    _companionLabel.Text = $"🐾 驯养中 {taming.TrustProgress:F0}%";
+                    return;
+                }
+            }
+
+            // 查找已驯服的伴侣（显示当前指令）
+            foreach (var id in EcsWorld.Instance.Query<TamingComponent, CreatureStatsComponent>())
+            {
+                var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id)!;
+                var stats  = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id)!;
+                if (taming.State != TamingState.Tamed) continue;
+                if (stats.OwnerId != _playerEntityId) continue;
+
+                var def = Core.Data.CreatureRegistry.Instance.Get(stats.SpeciesId);
+                string name = def?.DisplayName ?? stats.SpeciesId;
+                string order = stats.CurrentOrder switch
+                {
+                    AIBehaviorOrder.Follow  => "跟随",
+                    AIBehaviorOrder.Harvest => "采集中",
+                    AIBehaviorOrder.Guard   => "守卫",
+                    _                       => "待机"
+                };
+                _companionLabel.Text = $"🐗 {name}  [{order}]  忠诚:{stats.Loyalty:F0}";
+                return;
+            }
+
+            _companionLabel.Text = "";
         }
 
         // ── 工具 ──────────────────────────────────────────────────────────
