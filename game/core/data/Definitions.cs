@@ -100,6 +100,21 @@ namespace SurvivalGame.Core.Data
     public enum CreatureTier { F, D, C, B, A, S, Boss }
 
     // ═══════════════════════════════════════════════════════════════════
+    // 特性词条定义（驯养完成时随机赋予）
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class TraitDefinition
+    {
+        public string Id                 = "";
+        public string DisplayName        = "";   // 中文显示名
+        public float  HpMult             = 1f;   // 最大 HP 倍率
+        public float  AttackMult         = 1f;   // 攻击力倍率
+        public float  SpeedMult          = 1f;   // 移速倍率
+        public float  LoyaltyDrainMult   = 1f;   // 忠诚衰减倍率（< 1 = 衰减更慢）
+        public float  DetectionRangeMult = 1f;   // 感知范围倍率
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // 群系定义
     // ═══════════════════════════════════════════════════════════════════
 

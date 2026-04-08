@@ -162,6 +162,7 @@ namespace SurvivalGame.Core.ECS
         public float AttackCooldown = 1.5f;  // 攻击冷却（秒）
         public float AttackTimer = 0f;       // 距下次攻击还需等待的时间
         public float AggroIgnoreDistTimer = 0f; // 远程命中后无视距离限制的持续时间
+        public float MoveSpeed = 4f;            // 基础移速（米/秒），特性词条可修改
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -176,6 +177,19 @@ namespace SurvivalGame.Core.ECS
         public float   Damage           = 30f;   // 命中伤害
         public float   MaxRange         = 22f;   // 最大射程（米）
         public float   TraveledDistance = 0f;    // 已飞行距离
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 繁殖组件（驯服生物可进行繁殖，产下后代）
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class BreedingComponent
+    {
+        public float BreedCooldown     = 0f;    // 下次可繁殖的冷却倒计时（秒）
+        public bool  IsPregnant        = false;
+        public float PregnancyTimer    = 0f;    // 孕育进度（秒）
+        public float PregnancyDuration = 90f;   // 孕育总时长（秒）
+        public int   PartnerId         = -1;    // 配对伙伴的实体 ID
     }
 
     // ═══════════════════════════════════════════════════════════════════

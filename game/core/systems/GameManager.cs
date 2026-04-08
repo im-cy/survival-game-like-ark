@@ -27,6 +27,7 @@ namespace SurvivalGame.Core.Systems
         public CombatSystem    Combat    { get; private set; } = null!;
         public CraftingSystem    Crafting    { get; private set; } = null!;
         public ProjectileSystem  Projectile  { get; private set; } = null!;
+        public BreedingSystem    Breeding    { get; private set; } = null!;
 
         public override void _Ready()
         {
@@ -49,6 +50,7 @@ namespace SurvivalGame.Core.Systems
             Combat     = Register(new CombatSystem());
             Crafting   = Register(new CraftingSystem());
             Projectile = Register(new ProjectileSystem());
+            Breeding   = Register(new BreedingSystem());
 
             foreach (var system in _systems)
                 system.Initialize();

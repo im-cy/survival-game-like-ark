@@ -89,4 +89,18 @@ namespace SurvivalGame.Core.Data
             }
         }
     }
+
+    /// <summary>特性词条注册表</summary>
+    public class TraitRegistry
+    {
+        public static TraitRegistry Instance { get; } = new();
+        private readonly Dictionary<string, TraitDefinition> _traits = new();
+
+        public void Register(TraitDefinition def) => _traits[def.Id] = def;
+
+        public TraitDefinition? Get(string id)
+            => _traits.TryGetValue(id, out var d) ? d : null;
+
+        public IEnumerable<TraitDefinition> All => _traits.Values;
+    }
 }

@@ -126,8 +126,45 @@ namespace SurvivalGame.Core.Systems
             health.MaxHp *= eff;
             health.CurrentHp = health.MaxHp;
 
+            // 随机赋予 1–2 个特性词条
+            var def = CreatureRegistry.Instance.Get(stats.SpeciesId);
+            if (def != null && def.PossibleTraits.Length > 0)
+                ApplyRandomTraits(creatureId, stats, health, ai, def);
+
             EventBus.Instance.Emit("creature_tamed", new TamedEventData(playerId, creatureId));
-            GD.Print($"[Taming] 驯服完成！生物ID={creatureId}，归玩家ID={playerId}");
+            GD.Print($"[Taming] 驯服完成！生物ID={creatureId}  词条：[{string.Join(", ", stats.Traits)}]");
+        }
+
+        private static void ApplyRandomTraits(int id, CreatureStatsComponent stats,
+            HealthComponent health, AIComponent? ai, CreatureDefinition def)
+        {
+            var rng = new RandomNumberGenerator();
+            rng.Randomize();
+
+            int traitCount = rng.RandiRange(1, Mathf.Min(2, def.PossibleTraits.Length));
+            var available  = new System.Collections.Generic.List<string>(def.PossibleTraits);
+
+            for (int i = 0; i < traitCount && available.Count > 0; i++)
+            {
+                int    idx   = rng.RandiRange(0, available.Count - 1);
+                string tid   = available[idx];
+                available.RemoveAt(idx);
+
+                var trait = TraitRegistry.Instance.Get(tid);
+                if (trait == null) continue;
+
+                stats.Traits.Add(tid);
+
+                health.MaxHp    *= trait.HpMult;
+                health.CurrentHp = health.MaxHp;
+
+                if (ai != null)
+                {
+                    ai.AttackPower    *= trait.AttackMult;
+                    ai.MoveSpeed      *= trait.SpeedMult;
+                    ai.DetectionRange *= trait.DetectionRangeMult;
+                }
+            }
         }
 
         private void AbandonCreature(int entityId, CreatureStatsComponent stats)

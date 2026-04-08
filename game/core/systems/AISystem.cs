@@ -228,7 +228,7 @@ namespace SurvivalGame.Core.Systems
 
         private void ChaseAndAttack(int id, AIComponent ai, PositionComponent pos, float delta)
         {
-            float speed = 4f;
+            float speed = ai.MoveSpeed;
             ai.AttackTimer -= delta;
             MoveToward(pos, _playerPos, speed, delta);
             if (pos.Position.DistanceTo(_playerPos) <= ai.AttackRange && ai.AttackTimer <= 0f)

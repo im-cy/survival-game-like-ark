@@ -28,7 +28,8 @@ namespace SurvivalGame.World
                 float wx   = origin.X + x;
                 float wz   = origin.Y + z;
                 var biome  = _biomeMap.GetBiome(new Vector3(wx, 0f, wz));
-                var tile   = biome == BiomeType.Forest ? TileType.DeepGrass : TileType.Grass;
+                var tile   = (biome == BiomeType.Forest || biome == BiomeType.Swamp)
+                    ? TileType.DeepGrass : TileType.Grass;
                 chunk.SetTile(x, z, tile, biome);
             }
 

@@ -14,6 +14,29 @@ namespace SurvivalGame.Core.Data
             RegisterItems();
             RegisterRecipes();
             RegisterCreatures();
+            RegisterTraits();
+        }
+
+        // ── 特性词条 ───────────────────────────────────────────────────────
+
+        private static void RegisterTraits()
+        {
+            var tr = TraitRegistry.Instance;
+
+            tr.Register(new TraitDefinition { Id = "sturdy",    DisplayName = "强壮",
+                HpMult = 1.30f });
+            tr.Register(new TraitDefinition { Id = "fierce",    DisplayName = "凶猛",
+                AttackMult = 1.30f, SpeedMult = 0.90f });
+            tr.Register(new TraitDefinition { Id = "swift",     DisplayName = "敏捷",
+                SpeedMult = 1.35f });
+            tr.Register(new TraitDefinition { Id = "hardy",     DisplayName = "耐久",
+                LoyaltyDrainMult = 0.40f });
+            tr.Register(new TraitDefinition { Id = "stocky",    DisplayName = "粗壮",
+                HpMult = 1.15f, SpeedMult = 0.85f });
+            tr.Register(new TraitDefinition { Id = "keen",      DisplayName = "敏锐",
+                DetectionRangeMult = 1.35f });
+            tr.Register(new TraitDefinition { Id = "predator",  DisplayName = "掠食者",
+                AttackMult = 1.20f, DetectionRangeMult = 1.20f });
         }
 
         // ── 物品 ──────────────────────────────────────────────────────────
@@ -184,6 +207,8 @@ namespace SurvivalGame.Core.Data
         {
             var cr = CreatureRegistry.Instance;
 
+            // ── 森林 / 草原 ──────────────────────────────────────────────
+
             // 野猪 — 被动驯养，用浆果喂食，驯服后可自动采集木材
             cr.Register(new CreatureDefinition
             {
@@ -195,6 +220,7 @@ namespace SurvivalGame.Core.Data
                 HarvestResourceType = "wood",
                 CanRide = false, CanFly = false,
                 SpawnBiomes = new[] { "forest", "grassland" },
+                PossibleTraits = new[] { "sturdy", "swift", "hardy", "stocky" },
                 LootTable = new[] { "meat:2", "hide:1" },
                 ViewScale = 1f,
                 DetectionRange = 12f,
@@ -206,7 +232,7 @@ namespace SurvivalGame.Core.Data
             {
                 Id = "forest_guardian", DisplayName = "森林守卫者",
                 Tier = CreatureTier.Boss,
-                TamingMethod = TamingMethod.Knockout,   // 不可驯养
+                TamingMethod = TamingMethod.Knockout,
                 PreferredFood = "",
                 BaseHp = 1500f, BaseAttack = 35f, BaseSpeed = 3f, BaseWeight = 200f,
                 HarvestResourceType = "",
@@ -214,8 +240,88 @@ namespace SurvivalGame.Core.Data
                 SpawnBiomes = new[] { "forest" },
                 LootTable = new[] { "boss_crystal:1", "hide:5", "meat:3" },
                 ViewScale = 2.5f,
-                DetectionRange = 7f,    // 调试用：约 1/4 屏幕视野
+                DetectionRange = 7f,
                 AttackRange    = 3.5f,
+            });
+
+            // ── 沙漠 ────────────────────────────────────────────────────
+
+            // 沙狐 — 被动驯养，喂浆果，驯服后跟随
+            cr.Register(new CreatureDefinition
+            {
+                Id = "sand_fox", DisplayName = "沙狐",
+                Tier = CreatureTier.D,
+                TamingMethod = TamingMethod.Passive,
+                PreferredFood = "berry",
+                BaseHp = 100f, BaseAttack = 8f, BaseSpeed = 5f, BaseWeight = 25f,
+                HarvestResourceType = "",
+                CanRide = false, CanFly = false,
+                SpawnBiomes = new[] { "desert" },
+                PossibleTraits = new[] { "swift", "keen", "hardy" },
+                LootTable = new[] { "hide:1", "meat:1" },
+                ViewScale = 0.8f,
+                DetectionRange = 14f,
+                AttackRange    = 1.8f,
+            });
+
+            // ── 雪原 ────────────────────────────────────────────────────
+
+            // 雪狼 — 被动驯养（危险），用肉喂食，驯服后跟随保护
+            cr.Register(new CreatureDefinition
+            {
+                Id = "snow_wolf", DisplayName = "雪狼",
+                Tier = CreatureTier.C,
+                TamingMethod = TamingMethod.Passive,
+                PreferredFood = "meat",
+                BaseHp = 200f, BaseAttack = 22f, BaseSpeed = 5.5f, BaseWeight = 60f,
+                HarvestResourceType = "",
+                CanRide = false, CanFly = false,
+                SpawnBiomes = new[] { "snow" },
+                PossibleTraits = new[] { "fierce", "swift", "predator", "sturdy" },
+                LootTable = new[] { "hide:2", "meat:2" },
+                ViewScale = 1.1f,
+                DetectionRange = 15f,
+                AttackRange    = 2.2f,
+            });
+
+            // ── 沼泽 ────────────────────────────────────────────────────
+
+            // 沼泽蟾蜍 — 被动驯养，喂浆果，体型大但温和
+            cr.Register(new CreatureDefinition
+            {
+                Id = "swamp_toad", DisplayName = "沼泽蟾蜍",
+                Tier = CreatureTier.D,
+                TamingMethod = TamingMethod.Passive,
+                PreferredFood = "berry",
+                BaseHp = 250f, BaseAttack = 12f, BaseSpeed = 2.5f, BaseWeight = 80f,
+                HarvestResourceType = "",
+                CanRide = false, CanFly = false,
+                SpawnBiomes = new[] { "swamp" },
+                PossibleTraits = new[] { "sturdy", "hardy", "stocky" },
+                LootTable = new[] { "hide:2", "meat:3" },
+                ViewScale = 1.3f,
+                DetectionRange = 10f,
+                AttackRange    = 2.0f,
+            });
+
+            // ── 火山 ────────────────────────────────────────────────────
+
+            // 火蜥蜴 — 被动驯养，喂生肉，掉落兽皮和肉
+            cr.Register(new CreatureDefinition
+            {
+                Id = "fire_lizard", DisplayName = "火蜥蜴",
+                Tier = CreatureTier.C,
+                TamingMethod = TamingMethod.Passive,
+                PreferredFood = "meat",
+                BaseHp = 180f, BaseAttack = 18f, BaseSpeed = 3.8f, BaseWeight = 50f,
+                HarvestResourceType = "",
+                CanRide = false, CanFly = false,
+                SpawnBiomes = new[] { "volcano" },
+                PossibleTraits = new[] { "fierce", "sturdy", "predator", "keen" },
+                LootTable = new[] { "hide:3", "meat:2" },
+                ViewScale = 1.0f,
+                DetectionRange = 11f,
+                AttackRange    = 2.0f,
             });
         }
     }

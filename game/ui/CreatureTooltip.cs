@@ -1,6 +1,6 @@
 using Godot;
-using SurvivalGame.Core.ECS;
 using SurvivalGame.Core.Data;
+using SurvivalGame.Core.ECS;
 
 namespace SurvivalGame.UI
 {
@@ -20,6 +20,7 @@ namespace SurvivalGame.UI
         private Label          _tamKeyLbl = null!;
         private Label          _tamValLbl = null!;
         private Label          _stateLbl  = null!;
+        private Label          _traitLbl  = null!;
 
         private Camera3D? _camera;
 
@@ -72,6 +73,14 @@ namespace SurvivalGame.UI
             _stateLbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
             _stateLbl.CustomMinimumSize = new Vector2(174, 0);
             vbox.AddChild(_stateLbl);
+
+            // ── 特性词条 ──────────────────────────────────────────────
+            _traitLbl = new Label { Text = "" };
+            _traitLbl.AddThemeConstantOverride("font_size", 11);
+            _traitLbl.AddThemeColorOverride("font_color", new Color(0.95f, 0.80f, 0.30f)); // 金色
+            _traitLbl.AutowrapMode = TextServer.AutowrapMode.WordSmart;
+            _traitLbl.CustomMinimumSize = new Vector2(174, 0);
+            vbox.AddChild(_traitLbl);
 
             // ── 操作提示 ──────────────────────────────────────────────
             var hintLbl = new Label { Text = "[E] 喂食" };
@@ -126,6 +135,23 @@ namespace SurvivalGame.UI
             string name = def?.DisplayName ?? (stats?.SpeciesId ?? "未知");
             _nameLbl.Text = $"{name}  Lv.{stats?.Level ?? 1}";
 
+            // 特性词条（驯服后显示）
+            if (stats != null && stats.Traits.Count > 0)
+            {
+                var traitNames = new System.Collections.Generic.List<string>();
+                foreach (var tid in stats.Traits)
+                {
+                    var td = TraitRegistry.Instance.Get(tid);
+                    traitNames.Add(td?.DisplayName ?? tid);
+                }
+                _traitLbl.Text = "★ " + string.Join("  ", traitNames);
+                _traitLbl.Visible = true;
+            }
+            else
+            {
+                _traitLbl.Visible = false;
+            }
+
             // HP
             if (health != null)
             {
@@ -149,7 +175,24 @@ namespace SurvivalGame.UI
                     AIBehaviorOrder.Guard   => "守卫中",
                     _                       => "待机"
                 };
-                _stateLbl.Text = $"状态：{order}\n[H] 切换指令";
+
+                // 繁殖状态附加提示
+                string breedInfo = "";
+                var breeding = EcsWorld.Instance.GetComponent<BreedingComponent>(entityId);
+                if (breeding != null)
+                {
+                    if (breeding.IsPregnant)
+                    {
+                        int pct = (int)(breeding.PregnancyTimer / breeding.PregnancyDuration * 100f);
+                        breedInfo = $"\n孕育中 {pct}%";
+                    }
+                    else if (breeding.BreedCooldown > 0f)
+                    {
+                        breedInfo = $"\n繁殖冷却 {(int)breeding.BreedCooldown}s";
+                    }
+                }
+
+                _stateLbl.Text = $"状态：{order}{breedInfo}\n[H] 切换指令";
             }
             else
             {

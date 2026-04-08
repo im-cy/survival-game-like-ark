@@ -45,7 +45,11 @@ namespace SurvivalGame.Entities.Creatures
                 DetectionRange = def.DetectionRange,
                 AttackRange    = def.AttackRange,
                 AttackPower    = def.BaseAttack,
+                MoveSpeed      = def.BaseSpeed,
             });
+            // Boss 不参与繁殖；普通生物出生时带繁殖组件（待驯服后才会激活）
+            if (def.Tier != CreatureTier.Boss)
+                EcsWorld.Instance.AddComponent(entityId, new BreedingComponent());
 
             // 直接创建视图节点（不依赖 PackedScene export）
             var view = new CreatureView();
