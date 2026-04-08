@@ -1,6 +1,7 @@
 using Godot;
 using System.Collections.Generic;
 using SurvivalGame.Core.ECS;
+using SurvivalGame.Core.Data;
 
 namespace SurvivalGame.Core.Systems
 {
@@ -15,18 +16,23 @@ namespace SurvivalGame.Core.Systems
         private readonly List<SystemBase> _systems = new();
 
         // 对外暴露各系统引用，方便其他地方直接访问
-        public SurvivalSystem Survival { get; private set; } = null!;
-        public TamingSystem   Taming   { get; private set; } = null!;
-        public AISystem       AI       { get; private set; } = null!;
-        public DayNightSystem DayNight { get; private set; } = null!;
-        public HarvestSystem  Harvest  { get; private set; } = null!;
+        public SurvivalSystem  Survival  { get; private set; } = null!;
+        public TamingSystem    Taming    { get; private set; } = null!;
+        public AISystem        AI        { get; private set; } = null!;
+        public DayNightSystem  DayNight  { get; private set; } = null!;
+        public HarvestSystem   Harvest   { get; private set; } = null!;
+        public CampfireSystem  Campfire  { get; private set; } = null!;
 
         public override void _Ready()
         {
             Instance = this;
 
+            // 注册硬编码数据（物品、建造件）
+            DataSetup.Register();
+
             // 注册系统（顺序即执行顺序）
             Harvest  = Register(new HarvestSystem());
+            Campfire = Register(new CampfireSystem());
             Survival = Register(new SurvivalSystem());
             Taming   = Register(new TamingSystem());
             AI       = Register(new AISystem());

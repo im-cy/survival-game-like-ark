@@ -1,0 +1,24 @@
+[gd_scene load_steps=3 format=3 uid="uid://campfire_scene"]
+
+[ext_resource type="Script" path="res://entities/building/Campfire.cs" id="1_campfire"]
+[ext_resource type="Texture2D" path="res://assets/sprites/campfire.png" id="2_tex"]
+
+[node name="Campfire" type="Node3D"]
+script = ExtResource("1_campfire")
+
+[node name="OmniLight3D" type="OmniLight3D" parent="."]
+light_color = Color(1, 0.55, 0.15, 1)
+omni_range = 5.0
+light_energy = 1.8
+
+[node name="Sprite3D" type="Sprite3D" parent="."]
+billboard = 1
+pixel_size = 0.015
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.5, 0)
+texture = ExtResource("2_tex")
+
+[node name="Logs" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.2, 0)
+
+[node name="Flame" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.55, 0)

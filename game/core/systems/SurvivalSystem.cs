@@ -46,10 +46,27 @@ namespace SurvivalGame.Core.Systems
         private void UpdateTemperature(int entityId, SurvivalComponent s, float delta)
         {
             var pos = EcsWorld.Instance.GetComponent<PositionComponent>(entityId);
-            float biomeTemp = WorldManager.Instance?.GetBiomeTemperature(pos?.Position ?? Vector3.Zero) ?? 37f;
-            float timeTemp  = DayNightSystem.Instance?.GetTemperatureModifier() ?? 0f;
-            float target    = biomeTemp + timeTemp;
-            s.Temperature   = Mathf.Lerp(s.Temperature, target, 0.05f * delta);
+            float biomeTemp     = WorldManager.Instance?.GetBiomeTemperature(pos?.Position ?? Vector3.Zero) ?? 37f;
+            float timeTemp      = DayNightSystem.Instance?.GetTemperatureModifier() ?? 0f;
+            float campfireBonus = GetCampfireBonus(pos?.Position ?? Vector3.Zero);
+            float target        = biomeTemp + timeTemp + campfireBonus;
+            s.Temperature       = Mathf.Lerp(s.Temperature, target, 0.05f * delta);
+        }
+
+        /// <summary>查询附近点燃的营火，返回最大加温幅度。</summary>
+        private static float GetCampfireBonus(Vector3 position)
+        {
+            float bonus = 0f;
+            foreach (var cfId in EcsWorld.Instance.Query<CampfireComponent, PositionComponent>())
+            {
+                var cf    = EcsWorld.Instance.GetComponent<CampfireComponent>(cfId)!;
+                if (!cf.IsLit) continue;
+                var cfPos = EcsWorld.Instance.GetComponent<PositionComponent>(cfId)!;
+                float dist = position.DistanceTo(cfPos.Position);
+                if (dist <= cf.WarmthRadius)
+                    bonus = Mathf.Max(bonus, cf.WarmthBonus * (1f - dist / cf.WarmthRadius));
+            }
+            return bonus;
         }
 
         // ── 外部调用 ─────────────────────────────────────────────────────

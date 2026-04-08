@@ -174,6 +174,29 @@ namespace SurvivalGame.Core.ECS
     }
 
     // ═══════════════════════════════════════════════════════════════════
+    // 营火组件
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class CampfireComponent
+    {
+        public bool IsLit = true;
+        public float FuelRemaining = 120f;  // 秒
+        public float WarmthRadius = 5f;     // 米
+        public float WarmthBonus = 20f;     // 加温度（°C）
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 建造件组件
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class BuildingPieceComponent
+    {
+        public string PieceId = "";
+        public float HpMax = 500f;
+        public float HpCurrent = 500f;
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
     // 枚举
     // ═══════════════════════════════════════════════════════════════════
 

@@ -19,6 +19,7 @@ namespace SurvivalGame.UI
 
         private Label _dayLabel       = null!;
         private Label _inventoryLabel = null!;
+        private Label _tempLabel      = null!;
 
         private int _playerEntityId = -1;
 
@@ -96,6 +97,29 @@ namespace SurvivalGame.UI
             _hungerBar  = bars[1]; _hungerVal  = vals[1];
             _thirstBar  = bars[2]; _thirstVal  = vals[2];
             _staminaBar = bars[3]; _staminaVal = vals[3];
+
+            // ── 体温行（文字，不用进度条）─────────────────────────────
+            var tempRow = new HBoxContainer();
+            tempRow.AddThemeConstantOverride("separation", 6);
+            tempRow.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+
+            var tempIconLbl = new Label { Text = "🌡 体温" };
+            tempIconLbl.CustomMinimumSize = new Vector2(72, 22);
+            tempIconLbl.VerticalAlignment = VerticalAlignment.Center;
+            tempRow.AddChild(tempIconLbl);
+
+            _tempLabel = new Label { Text = "37.0°C" };
+            _tempLabel.SizeFlagsHorizontal = Control.SizeFlags.ExpandFill;
+            _tempLabel.VerticalAlignment   = VerticalAlignment.Center;
+            tempRow.AddChild(_tempLabel);
+
+            vbox.AddChild(tempRow);
+
+            // ── 操作提示行 ───────────────────────────────────────────
+            var hintLbl = new Label { Text = "E=采集  F=食用  B=建造" };
+            hintLbl.AddThemeColorOverride("font_color", new Color(0.65f, 0.65f, 0.65f));
+            hintLbl.AddThemeConstantOverride("font_size", 11);
+            vbox.AddChild(hintLbl);
         }
 
         // ── 每帧更新 ──────────────────────────────────────────────────────
@@ -118,6 +142,18 @@ namespace SurvivalGame.UI
             SetBar(_hungerBar,  _hungerVal,  s.Hunger,  $"{(int)s.Hunger}");
             SetBar(_thirstBar,  _thirstVal,  s.Thirst,  $"{(int)s.Thirst}");
             SetBar(_staminaBar, _staminaVal, s.Stamina, $"{(int)s.Stamina}");
+
+            // 体温显示（颜色：正常=绿，偏冷=蓝，过冷/热=红）
+            float temp = s.Temperature;
+            _tempLabel.Text = $"{temp:F1}°C";
+            Color tempColor;
+            if (temp < 10f || temp > 50f)
+                tempColor = new Color(1f, 0.25f, 0.25f);   // 危险（红）
+            else if (temp < 20f || temp > 42f)
+                tempColor = new Color(1f, 0.75f, 0.2f);    // 警告（橙）
+            else
+                tempColor = new Color(0.5f, 1f, 0.5f);     // 正常（绿）
+            _tempLabel.AddThemeColorOverride("font_color", tempColor);
 
             var inv = EcsWorld.Instance.GetComponent<InventoryComponent>(_playerEntityId);
             if (inv != null)

@@ -1,0 +1,6 @@
+[gd_scene load_steps=2 format=3 uid="uid://building_piece_scene"]
+
+[ext_resource type="Script" path="res://entities/building/BuildingPiece.cs" id="1_bp"]
+
+[node name="BuildingPiece" type="Node3D"]
+script = ExtResource("1_bp")
