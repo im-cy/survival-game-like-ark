@@ -1,42 +1,63 @@
 using System.Collections.Generic;
+using SurvivalGame.Core.ECS;
 
 namespace SurvivalGame.Core.Data
 {
     /// <summary>
-    /// 建造件定义 — M2：营火、茅草房（整体建筑）。
-    /// 设计原则：2.5D俯视游戏中，建造物以"整体"为单位放置，
-    ///            而非零散拼接墙片/地板，保证视觉完整性。
+    /// 建造件定义。
+    /// 整体建筑两档（茅草房 / 木质房）+ 功能件（营火）。
     /// </summary>
     public class BuildingPieceDef
     {
         public string Id = "";
         public string DisplayName = "";
         public Dictionary<string, int> Materials = new();
+        public float HpMax = 500f;
+        public BuildingTier Tier = BuildingTier.Thatch;
+        public BuildingPieceType PieceType = BuildingPieceType.House;
         public bool IsCampfire = false;
-        /// <summary>是否提供庇护所效果（挡风避寒）</summary>
-        public bool IsShelter = false;
+        public bool IsShelter  = false;
     }
 
     public static class BuildingRegistry
     {
         public static readonly List<BuildingPieceDef> Pieces = new()
         {
-            new BuildingPieceDef
-            {
-                Id = "campfire", DisplayName = "营火",
-                Materials = new Dictionary<string, int> { ["wood"] = 5 },
-                IsCampfire = true
-            },
+            // ── 茅草档（Tier 1）────────────────────────────────────────
             new BuildingPieceDef
             {
                 Id = "thatch_house", DisplayName = "茅草房",
-                Materials = new Dictionary<string, int> { ["grass"] = 15, ["wood"] = 5 },
-                IsShelter = true
+                Materials = new() { ["grass"] = 15, ["wood"] = 5 },
+                HpMax = 1000f,
+                Tier = BuildingTier.Thatch, PieceType = BuildingPieceType.House,
+                IsShelter = true,
+            },
+
+            // ── 木质档（Tier 2）────────────────────────────────────────
+            new BuildingPieceDef
+            {
+                Id = "wood_house", DisplayName = "木质房",
+                Materials = new() { ["wood"] = 20 },
+                HpMax = 2500f,
+                Tier = BuildingTier.Wood, PieceType = BuildingPieceType.House,
+                IsShelter = true,
+            },
+
+            // ── 功能件 ────────────────────────────────────────────────
+            new BuildingPieceDef
+            {
+                Id = "campfire", DisplayName = "营火",
+                Materials = new() { ["wood"] = 5 },
+                HpMax = 200f,
+                Tier = BuildingTier.Thatch, PieceType = BuildingPieceType.Special,
+                IsCampfire = true,
             },
         };
 
         public static BuildingPieceDef? Get(string id) =>
             Pieces.Find(p => p.Id == id);
+
+        public static IEnumerable<BuildingPieceDef> MenuPieces() => Pieces;
 
         /// <summary>返回所需材料的可读字符串，如 "木材×5"</summary>
         public static string GetCostText(BuildingPieceDef piece)

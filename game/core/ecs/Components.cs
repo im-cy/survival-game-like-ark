@@ -194,6 +194,9 @@ namespace SurvivalGame.Core.ECS
         public string PieceId = "";
         public float HpMax = 500f;
         public float HpCurrent = 500f;
+        public BuildingTier Tier = BuildingTier.Thatch;
+        public BuildingPieceType PieceType = BuildingPieceType.House;
+        public bool IsStable = true;
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -205,4 +208,6 @@ namespace SurvivalGame.Core.ECS
     public enum AITier { Active, Passive, Dormant }
     public enum FSMState { Wander, Alert, Hostile, Cautious, Follow, Guard, Harvest, Flee, Dead }
     public enum AIBehaviorOrder { Wander, Follow, Guard, Harvest, Stay }
+    public enum BuildingTier { Thatch, Wood }
+    public enum BuildingPieceType { House, Special }
 }

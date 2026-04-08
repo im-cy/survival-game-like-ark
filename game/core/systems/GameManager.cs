@@ -23,6 +23,7 @@ namespace SurvivalGame.Core.Systems
         public DayNightSystem  DayNight  { get; private set; } = null!;
         public HarvestSystem   Harvest   { get; private set; } = null!;
         public CampfireSystem  Campfire  { get; private set; } = null!;
+        public BuildingSystem  Building  { get; private set; } = null!;
 
         public override void _Ready()
         {
@@ -34,6 +35,7 @@ namespace SurvivalGame.Core.Systems
             // 注册系统（顺序即执行顺序）
             Harvest  = Register(new HarvestSystem());
             Campfire = Register(new CampfireSystem());
+            Building = Register(new BuildingSystem());
             Survival = Register(new SurvivalSystem());
             Taming   = Register(new TamingSystem());
             AI       = Register(new AISystem());

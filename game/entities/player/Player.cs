@@ -3,6 +3,7 @@ using SurvivalGame.Core.ECS;
 using SurvivalGame.Core.Data;
 using SurvivalGame.Core.Systems;
 using SurvivalGame.World;
+using SurvivalGame.Entities.Building;
 
 namespace SurvivalGame.Entities.Player
 {
@@ -137,14 +138,27 @@ namespace SurvivalGame.Entities.Player
 
         private void TryInteract()
         {
-            // 先尝试喂食附近的可驯养生物
+            // 优先：建筑门交互
+            if (TryInteractWithBuilding()) return;
+
+            // 其次：喂食附近可驯养生物
             if (TryFeedNearbyCreature()) return;
 
-            // 没有生物可喂 → 采集鼠标指向的资源
+            // 最后：采集鼠标指向的资源
             var mouseWorld = GetMouseWorldPosition();
             var result = GameManager.Instance?.Harvest?.TryHarvest(EntityId, mouseWorld);
             if (result == HarvestResult.NoTarget)
                 GD.Print("[Player] 鼠标附近没有可采集的资源");
+        }
+
+        private bool TryInteractWithBuilding()
+        {
+            foreach (var node in GetTree().GetNodesInGroup("building_pieces"))
+            {
+                if (node is BuildingPiece bp && bp.TryInteractDoor(GlobalPosition))
+                    return true;
+            }
+            return false;
         }
 
         private bool TryFeedNearbyCreature()
