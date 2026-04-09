@@ -21,6 +21,10 @@ namespace SurvivalGame.UI
         private Label          _tamValLbl = null!;
         private Label          _stateLbl  = null!;
         private Label          _traitLbl  = null!;
+        private ProgressBar    _expBar    = null!;
+        private Label          _expValLbl = null!;
+        private Label          _evolveLbl = null!;
+        private Label          _hintLbl   = null!;
 
         private Camera3D? _camera;
 
@@ -74,6 +78,19 @@ namespace SurvivalGame.UI
             _stateLbl.CustomMinimumSize = new Vector2(174, 0);
             vbox.AddChild(_stateLbl);
 
+            // ── 经验条（驯服后显示）──────────────────────────────────
+            var expRow = MakeBarRow("EXP", out _expBar, out _expValLbl,
+                new Color(0.50f, 0.85f, 0.50f));
+            _expBar.MaxValue = 100;
+            vbox.AddChild(expRow);
+
+            // ── 进化提示 ──────────────────────────────────────────────
+            _evolveLbl = new Label { Text = "" };
+            _evolveLbl.AddThemeConstantOverride("font_size", 11);
+            _evolveLbl.AddThemeColorOverride("font_color", new Color(1f, 0.85f, 0.1f));
+            _evolveLbl.HorizontalAlignment = HorizontalAlignment.Center;
+            vbox.AddChild(_evolveLbl);
+
             // ── 特性词条 ──────────────────────────────────────────────
             _traitLbl = new Label { Text = "" };
             _traitLbl.AddThemeConstantOverride("font_size", 11);
@@ -83,10 +100,10 @@ namespace SurvivalGame.UI
             vbox.AddChild(_traitLbl);
 
             // ── 操作提示 ──────────────────────────────────────────────
-            var hintLbl = new Label { Text = "[E] 喂食" };
-            hintLbl.AddThemeConstantOverride("font_size", 10);
-            hintLbl.AddThemeColorOverride("font_color", new Color(0.45f, 0.45f, 0.45f));
-            vbox.AddChild(hintLbl);
+            _hintLbl = new Label { Text = "[E] 喂食" };
+            _hintLbl.AddThemeConstantOverride("font_size", 10);
+            _hintLbl.AddThemeColorOverride("font_color", new Color(0.45f, 0.45f, 0.45f));
+            vbox.AddChild(_hintLbl);
 
             AddChild(_panel);
         }
@@ -131,9 +148,38 @@ namespace SurvivalGame.UI
             var stats  = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(entityId);
 
             // 名称 + 等级
+            var exp = EcsWorld.Instance.GetComponent<ExperienceComponent>(entityId);
             var def = stats != null ? CreatureRegistry.Instance.Get(stats.SpeciesId) : null;
             string name = def?.DisplayName ?? (stats?.SpeciesId ?? "未知");
-            _nameLbl.Text = $"{name}  Lv.{stats?.Level ?? 1}";
+            int  lv  = exp?.Level ?? stats?.Level ?? 1;
+            _nameLbl.Text = $"{name}  Lv.{lv}";
+
+            // 经验条 + 进化提示（只对驯服生物显示）
+            if (exp != null && taming.State == TamingState.Tamed)
+            {
+                float expPct = exp.ExpToNextLevel > 0f
+                    ? exp.CurrentExp / exp.ExpToNextLevel * 100f : 0f;
+                _expBar.Value   = expPct;
+                _expValLbl.Text = $"Lv{exp.Level}  {(int)exp.CurrentExp}/{(int)exp.ExpToNextLevel}";
+                _expBar.Visible    = true;
+                _expValLbl.Visible = true;
+
+                if (exp.CanEvolve)
+                {
+                    _evolveLbl.Text    = "⬆ 可进化！[V] 触发";
+                    _evolveLbl.Visible = true;
+                }
+                else
+                {
+                    _evolveLbl.Visible = false;
+                }
+            }
+            else
+            {
+                _expBar.Visible    = false;
+                _expValLbl.Visible = false;
+                _evolveLbl.Visible = false;
+            }
 
             // 特性词条（驯服后显示）
             if (stats != null && stats.Traits.Count > 0)
@@ -160,6 +206,14 @@ namespace SurvivalGame.UI
             }
 
             // 驯养 / 忠诚度
+            // 操作提示：根据驯服状态和骑乘能力动态更新
+            if (taming.State == TamingState.Tamed && (stats?.CanRide ?? false))
+                _hintLbl.Text = "[H] 指令  [R] 骑乘/下马";
+            else if (taming.State == TamingState.Tamed)
+                _hintLbl.Text = "[H] 切换指令";
+            else
+                _hintLbl.Text = "[E] 喂食";
+
             if (taming.State == TamingState.Tamed)
             {
                 _tamKeyLbl.Text = "忠诚";

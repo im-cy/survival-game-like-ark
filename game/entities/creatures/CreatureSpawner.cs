@@ -47,9 +47,12 @@ namespace SurvivalGame.Entities.Creatures
                 AttackPower    = def.BaseAttack,
                 MoveSpeed      = def.BaseSpeed,
             });
-            // Boss 不参与繁殖；普通生物出生时带繁殖组件（待驯服后才会激活）
+            // Boss 不参与繁殖/经验；普通生物带繁殖和经验组件（驯服后才生效）
             if (def.Tier != CreatureTier.Boss)
+            {
                 EcsWorld.Instance.AddComponent(entityId, new BreedingComponent());
+                EcsWorld.Instance.AddComponent(entityId, new ExperienceComponent());
+            }
 
             // 直接创建视图节点（不依赖 PackedScene export）
             var view = new CreatureView();

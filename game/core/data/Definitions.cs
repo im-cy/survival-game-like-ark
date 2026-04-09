@@ -95,6 +95,13 @@ namespace SurvivalGame.Core.Data
         public float ViewScale      = 1f;    // 占位体缩放倍率
         public float DetectionRange = 12f;   // 仇恨触发距离（m）
         public float AttackRange    = 2f;    // 近战攻击距离（m）
+
+        // 进化链
+        public string EvolvesTo   = "";  // 进化后的物种 ID（"" = 无）
+        public int    EvolveLevel = 0;   // 达到此等级可进化（0 = 不可进化）
+
+        // 占位体颜色（无贴图时显示的颜色）
+        public Godot.Color ViewColor = new Godot.Color(0.72f, 0.45f, 0.18f);
     }
 
     public enum CreatureTier { F, D, C, B, A, S, Boss }

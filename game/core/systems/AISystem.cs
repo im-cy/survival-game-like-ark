@@ -200,6 +200,11 @@ namespace SurvivalGame.Core.Systems
                         ai.StateTimer   = 0f;
                     }
                     break;
+
+                case FSMState.Mounted:
+                    // 骑乘状态：玩家直接驱动位置，AI 静默等待
+                    pos.Velocity = Vector3.Zero;
+                    break;
             }
         }
 
@@ -286,6 +291,7 @@ namespace SurvivalGame.Core.Systems
                         ? EcsWorld.Instance.GetComponent<InventoryComponent>(ownerId)
                         : null;
                     GameManager.Instance?.Harvest?.TryHarvestAt(ai.TargetEntityId, ownerInv);
+                    EventBus.Instance.Emit("creature_harvested", id);  // 触发 EXP 增加
                     ai.StateTimer = 0f;
                     GD.Print($"[AI] 生物ID={id} 正在采集资源ID={ai.TargetEntityId}");
                 }

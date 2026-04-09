@@ -129,7 +129,7 @@ namespace SurvivalGame.UI
             vbox.AddChild(_companionLabel);
 
             // ── 操作提示行 ────────────────────────────────────────────
-            _hintLabel = new Label { Text = "左键=攻击  E=采集/喂食  F=食用  B=建造  C=制作  I=背包  H=指令" };
+            _hintLabel = new Label { Text = "左键=攻击  E=采集/喂食  F=食用  B=建造  C=制作  I=背包  H=指令  V=进化  R=骑乘/下马" };
             _hintLabel.AddThemeColorOverride("font_color", new Color(0.65f, 0.65f, 0.65f));
             _hintLabel.AddThemeConstantOverride("font_size", 11);
             vbox.AddChild(_hintLabel);
@@ -189,17 +189,27 @@ namespace SurvivalGame.UI
             SetBar(_thirstBar,  _thirstVal,  s.Thirst,  $"{(int)s.Thirst}");
             SetBar(_staminaBar, _staminaVal, s.Stamina, $"{(int)s.Stamina}");
 
-            // 体温显示
+            // 体温显示（水中显示蓝色）
             float temp = s.Temperature;
-            _tempLabel.Text = $"{temp:F1}°C";
-            Color tempColor;
-            if (temp < 10f || temp > 50f)
-                tempColor = new Color(1f, 0.25f, 0.25f);
-            else if (temp < 20f || temp > 42f)
-                tempColor = new Color(1f, 0.75f, 0.2f);
+            var playerPos = EcsWorld.Instance.GetComponent<PositionComponent>(_playerEntityId);
+            bool inWater  = playerPos != null && playerPos.Position.Y < World.FiniteWorldMap.WaterLevel + 0.15f;
+            if (inWater)
+            {
+                _tempLabel.Text = $"{temp:F1}°C  🌊";
+                _tempLabel.AddThemeColorOverride("font_color", new Color(0.30f, 0.70f, 1f));
+            }
             else
-                tempColor = new Color(0.5f, 1f, 0.5f);
-            _tempLabel.AddThemeColorOverride("font_color", tempColor);
+            {
+                _tempLabel.Text = $"{temp:F1}°C";
+                Color tempColor;
+                if (temp < 10f || temp > 50f)
+                    tempColor = new Color(1f, 0.25f, 0.25f);
+                else if (temp < 20f || temp > 42f)
+                    tempColor = new Color(1f, 0.75f, 0.2f);
+                else
+                    tempColor = new Color(0.5f, 1f, 0.5f);
+                _tempLabel.AddThemeColorOverride("font_color", tempColor);
+            }
 
             // 伴侣状态（驯服进度 / 已驯服指令状态）
             UpdateCompanionStatus();
@@ -289,7 +299,10 @@ namespace SurvivalGame.UI
 
                 var def = Core.Data.CreatureRegistry.Instance.Get(stats.SpeciesId);
                 string name = def?.DisplayName ?? stats.SpeciesId;
-                string order = stats.CurrentOrder switch
+                // 骑乘中时显示特殊状态
+                var playerSurvival = EcsWorld.Instance.GetComponent<SurvivalComponent>(_playerEntityId);
+                bool isMounted = playerSurvival?.RidingEntityId == id;
+                string order = isMounted ? "骑乘中" : stats.CurrentOrder switch
                 {
                     AIBehaviorOrder.Follow  => "跟随",
                     AIBehaviorOrder.Harvest => "采集中",

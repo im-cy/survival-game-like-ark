@@ -107,6 +107,7 @@ namespace SurvivalGame.Core.ECS
         public float Temperature = 37f;     // 正常范围 35–39
         public float Stamina = 100f;        // 耗尽 → 移速/战斗惩罚
         public bool IsSprinting = false;
+        public int RidingEntityId = -1;             // -1 = 未骑乘；≥0 = 正在骑乘该实体
 
         public float HungerDrainRate = 1f / 60f;    // per second
         public float ThirstDrainRate = 1.5f / 60f;
@@ -177,6 +178,20 @@ namespace SurvivalGame.Core.ECS
         public float   Damage           = 30f;   // 命中伤害
         public float   MaxRange         = 22f;   // 最大射程（米）
         public float   TraveledDistance = 0f;    // 已飞行距离
+    }
+
+    // ═══════════════════════════════════════════════════════════════════
+    // 经验/等级/进化组件（驯服生物通过采集与战斗获取经验）
+    // ═══════════════════════════════════════════════════════════════════
+
+    public class ExperienceComponent
+    {
+        public int   Level      = 1;
+        public float CurrentExp = 0f;
+        public bool  CanEvolve  = false;   // 已满足进化条件，等待玩家触发（V 键）
+
+        /// <summary>升级所需经验值：随等级线性递增</summary>
+        public float ExpToNextLevel => Level * 100f;   // Lv1→2: 100, Lv2→3: 200, Lv4→5: 400 …
     }
 
     // ═══════════════════════════════════════════════════════════════════
@@ -257,7 +272,7 @@ namespace SurvivalGame.Core.ECS
     public enum TamingState { Wild, Alert, Cautious, Bonding, Sedated, Tamed }
     public enum TamingMethod { Passive, Knockout, Challenge }
     public enum AITier { Active, Passive, Dormant }
-    public enum FSMState { Wander, Alert, Hostile, Cautious, Follow, Guard, Harvest, Flee, Dead }
+    public enum FSMState { Wander, Alert, Hostile, Cautious, Follow, Guard, Harvest, Flee, Dead, Mounted }
     public enum AIBehaviorOrder { Wander, Follow, Guard, Harvest, Stay }
     public enum BuildingTier { Thatch, Wood }
     public enum BuildingPieceType { House, Special }

@@ -32,7 +32,15 @@ namespace SurvivalGame.World
             => _biomeMap.GetTemperature(worldPos);
 
         public BiomeType GetBiomeAt(Vector3 worldPos)
-            => _biomeMap.GetBiome(worldPos);
+        {
+            // 有限地图优先
+            if (FiniteWorldMap.Instance != null)
+                return FiniteWorldMap.Instance.GetBiomeAt(worldPos);
+            return _biomeMap.GetBiome(worldPos);
+        }
+
+        public bool IsInBounds(Vector3 worldPos)
+            => FiniteWorldMap.Instance?.IsInBounds(worldPos) ?? true;
 
         public override void _ExitTree() => Instance = null;
     }

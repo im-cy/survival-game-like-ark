@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using SurvivalGame.Core.ECS;
 using SurvivalGame.Core.Data;
 using SurvivalGame.Entities.Creatures;
+using SurvivalGame.World;
 
 namespace SurvivalGame.Core.Systems
 {
@@ -28,6 +29,7 @@ namespace SurvivalGame.Core.Systems
         public CraftingSystem    Crafting    { get; private set; } = null!;
         public ProjectileSystem  Projectile  { get; private set; } = null!;
         public BreedingSystem    Breeding    { get; private set; } = null!;
+        public ExperienceSystem  Experience  { get; private set; } = null!;
 
         public override void _Ready()
         {
@@ -51,6 +53,7 @@ namespace SurvivalGame.Core.Systems
             Crafting   = Register(new CraftingSystem());
             Projectile = Register(new ProjectileSystem());
             Breeding   = Register(new BreedingSystem());
+            Experience = Register(new ExperienceSystem());
 
             foreach (var system in _systems)
                 system.Initialize();
@@ -60,8 +63,66 @@ namespace SurvivalGame.Core.Systems
 
             GD.Print("[GameManager] 所有系统已初始化");
 
+            SetupSceneLighting();
+
+            // 禁用无限 Chunk 流式系统，使用有限地图替代
+            DisableChunkSystem();
+
+            // 有限地图（包含地形、资源、装饰散布）
+            var finiteMap = new FiniteWorldMap();
+            AddChild(finiteMap);
+
             // 场景树就绪后再生成生物（避免 CreatureSpawner 未就绪）
             CallDeferred(nameof(SpawnInitialCreatures));
+        }
+
+        // ── 禁用 Chunk 系统 ───────────────────────────────────────────────
+
+        private void DisableChunkSystem()
+        {
+            // ChunkManager 节点存在则禁用其处理，不删除（避免改 .tscn 文件）
+            var chunkManager = GetTree().Root.FindChild("ChunkManager", true, false);
+            if (chunkManager is Node cm)
+            {
+                cm.ProcessMode = ProcessModeEnum.Disabled;
+                GD.Print("[GameManager] ChunkManager 已禁用（使用 FiniteWorldMap 替代）");
+            }
+        }
+
+        // ── 场景光照 ──────────────────────────────────────────────────────
+
+        private void SetupSceneLighting()
+        {
+            // 主方向光（模拟太阳，带阴影）
+            var sun = new DirectionalLight3D();
+            sun.Name = "Sun";
+            sun.LightColor        = new Color(1.00f, 0.93f, 0.76f);
+            sun.LightEnergy       = 1.15f;
+            sun.RotationDegrees   = new Vector3(-52f, 35f, 0f);
+            sun.ShadowEnabled     = true;
+            sun.DirectionalShadowMode = DirectionalLight3D.ShadowMode.Parallel2Splits;
+            AddChild(sun);
+
+            // 补光（模拟天空散射，填充阴影面）
+            var fill = new DirectionalLight3D();
+            fill.Name         = "FillLight";
+            fill.LightColor   = new Color(0.60f, 0.72f, 0.90f);
+            fill.LightEnergy  = 0.38f;
+            fill.RotationDegrees = new Vector3(-30f, -150f, 0f);
+            fill.ShadowEnabled = false;
+            AddChild(fill);
+
+            // 环境（天空背景色 + 环境光）
+            var env = new Environment();
+            env.BackgroundMode  = Environment.BGMode.Color;
+            env.BackgroundColor = new Color(0.46f, 0.60f, 0.78f);
+            env.AmbientLightSource = Environment.AmbientSource.Color;
+            env.AmbientLightColor  = new Color(0.32f, 0.40f, 0.50f);
+            env.AmbientLightEnergy = 0.45f;
+            var worldEnv = new WorldEnvironment { Environment = env };
+            AddChild(worldEnv);
+
+            GD.Print("[GameManager] 场景光照已设置（太阳 + 补光 + 环境光）");
         }
 
         private void SpawnInitialCreatures()
@@ -73,12 +134,13 @@ namespace SurvivalGame.Core.Systems
                 return;
             }
 
-            // 在玩家出生点周围生成 2 只野猪
-            spawner.SpawnCreature("boar", new Vector3(8f,  0f,  6f));
-            spawner.SpawnCreature("boar", new Vector3(-7f, 0f,  8f));
+            // 有限地图：出生点在岛屿中心 (128,0,128) 附近
+            float cx = World.FiniteWorldMap.MapSize * 0.5f;
+            float cz = World.FiniteWorldMap.MapSize * 0.5f;
 
-            // 在稍远处生成 Boss（森林守卫者）
-            spawner.SpawnCreature("forest_guardian", new Vector3(25f, 0f, 20f));
+            spawner.SpawnCreature("boar", new Vector3(cx + 8f,  0f, cz + 6f));
+            spawner.SpawnCreature("boar", new Vector3(cx - 7f,  0f, cz + 8f));
+            spawner.SpawnCreature("forest_guardian", new Vector3(cx + 25f, 0f, cz + 20f));
         }
 
         // ── Boss 击败 → 解锁二阶配方 ─────────────────────────────────

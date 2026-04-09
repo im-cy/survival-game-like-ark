@@ -34,18 +34,16 @@ namespace SurvivalGame.Core.Systems
                 if (h.Depleted) continue;
                 var pos = EcsWorld.Instance.GetComponent<PositionComponent>(id)!;
 
-                // 必须在玩家伸手可及范围内
-                if (playerPos.Position.DistanceTo(pos.Position) > PlayerReachRange) continue;
+                // 使用 XZ 水平距离，避免地形高度差导致距离超标
+                if (DistXZ(playerPos.Position, pos.Position) > PlayerReachRange) continue;
 
-                // 优先选取最靠近鼠标光标的节点
                 float score = mouseWorldPos.HasValue
-                    ? mouseWorldPos.Value.DistanceTo(pos.Position)
-                    : playerPos.Position.DistanceTo(pos.Position);
+                    ? DistXZ(mouseWorldPos.Value, pos.Position)
+                    : DistXZ(playerPos.Position, pos.Position);
 
                 if (score < bestDist) { bestDist = score; bestId = id; }
             }
 
-            // 鼠标模式下还要求光标确实指向了该节点附近
             if (bestId >= 0 && mouseWorldPos.HasValue && bestDist > CursorPickRange)
                 bestId = -1;
 
@@ -124,6 +122,9 @@ namespace SurvivalGame.Core.Systems
         }
 
         public override void Tick(float delta) { }
+
+        private static float DistXZ(Vector3 a, Vector3 b)
+            => new Vector2(a.X - b.X, a.Z - b.Z).Length();
     }
 
     public enum HarvestResult { Success, NoTarget }

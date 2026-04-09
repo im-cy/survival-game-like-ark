@@ -1,5 +1,7 @@
 using Godot;
+using SurvivalGame.Core.Data;
 using SurvivalGame.Core.ECS;
+using SurvivalGame.Core.Systems;
 
 namespace SurvivalGame.Entities.Creatures
 {
@@ -46,7 +48,11 @@ namespace SurvivalGame.Entities.Creatures
         public void Setup(int entityId, Texture2D? spriteSheet)
         {
             EntityId = entityId;
-            EventBus.Instance.Subscribe("creature_died", OnCreatureDied);
+            EventBus.Instance.Subscribe("creature_died",    OnCreatureDied);
+            EventBus.Instance.Subscribe("creature_evolved", OnCreatureEvolved);
+
+            // 应用物种专属颜色到占位体
+            ApplySpeciesColor();
 
             if (spriteSheet != null && _sprite != null)
             {
@@ -57,15 +63,39 @@ namespace SurvivalGame.Entities.Creatures
             }
         }
 
+        private void ApplySpeciesColor()
+        {
+            var stats = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(EntityId);
+            if (stats == null || _placeholder == null) return;
+            var def = CreatureRegistry.Instance.Get(stats.SpeciesId);
+            if (def != null && _placeholder.MaterialOverride is StandardMaterial3D mat)
+                mat.AlbedoColor = def.ViewColor;
+        }
+
         private void OnCreatureDied(object? payload)
         {
             if (payload is int id && id == EntityId)
                 QueueFree();
         }
 
+        private void OnCreatureEvolved(object? payload)
+        {
+            if (payload is not EvolutionEventData data || data.EntityId != EntityId) return;
+            var def = CreatureRegistry.Instance.Get(data.NewSpeciesId);
+            if (def == null) return;
+
+            // 更新体型与颜色
+            Scale = Vector3.One * def.ViewScale;
+            if (_placeholder?.MaterialOverride is StandardMaterial3D mat)
+                mat.AlbedoColor = def.ViewColor;
+
+            GD.Print($"[CreatureView] EntityId={EntityId} 视觉更新为 {def.DisplayName}（×{def.ViewScale}）");
+        }
+
         public override void _ExitTree()
         {
-            EventBus.Instance.Unsubscribe("creature_died", OnCreatureDied);
+            EventBus.Instance.Unsubscribe("creature_died",    OnCreatureDied);
+            EventBus.Instance.Unsubscribe("creature_evolved", OnCreatureEvolved);
         }
 
         public override void _Process(double delta)

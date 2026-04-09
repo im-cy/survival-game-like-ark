@@ -26,6 +26,9 @@ namespace SurvivalGame.Entities.Player
 
         public override void _Ready()
         {
+            // 有限地图：传送到岛屿中心（CallDeferred 确保 FiniteWorldMap 已初始化）
+            CallDeferred(nameof(TeleportToIslandCenter));
+
             // ECS 注册
             EntityId  = EcsWorld.Instance.CreateEntity();
             _survival = new SurvivalComponent();
@@ -84,16 +87,53 @@ namespace SurvivalGame.Entities.Player
                 InputMap.AddAction("open_craft");
                 InputMap.ActionAddEvent("open_craft", new InputEventKey { Keycode = Key.C });
             }
+            if (!InputMap.HasAction("evolve_creature"))
+            {
+                InputMap.AddAction("evolve_creature");
+                InputMap.ActionAddEvent("evolve_creature", new InputEventKey { Keycode = Key.V });
+            }
+            if (!InputMap.HasAction("mount"))
+            {
+                InputMap.AddAction("mount");
+                InputMap.ActionAddEvent("mount", new InputEventKey { Keycode = Key.R });
+            }
             // inventory 在 project.godot 里已注册，此处无需重复添加
         }
 
+        private void TeleportToIslandCenter()
+        {
+            var map = FiniteWorldMap.Instance;
+            if (map == null) return;
+            float cx = FiniteWorldMap.MapSize * 0.5f;
+            float cz = FiniteWorldMap.MapSize * 0.5f;
+            float h  = map.GetTerrainHeight(new Vector3(cx, 0f, cz));
+            GlobalPosition = new Vector3(cx, h + 0.5f, cz);
+            if (_position != null) _position.Position = GlobalPosition;
+            if (WorldManager.Instance != null)
+                WorldManager.Instance.PlayerPosition = GlobalPosition;
+            GD.Print($"[Player] 传送到岛屿中心 ({cx:F0}, {h+0.5f:F1}, {cz:F0})");
+        }
+
+        // 是否在水中（Y 低于水面）
+        private bool IsInWater => GlobalPosition.Y < FiniteWorldMap.WaterLevel + 0.15f;
+
         public override void _PhysicsProcess(double delta)
         {
-            float dt    = (float)delta;
-            Vector3 dir = GetInputDirection();
-            bool sprint = Input.IsActionPressed("sprint") && _survival?.Stamina > 0f;
+            float dt = (float)delta;
 
-            float speed = sprint ? SprintSpeed : MoveSpeed;
+            // 骑乘状态：输入驱动坐骑，玩家跟随
+            if (_survival != null && _survival.RidingEntityId >= 0)
+            {
+                HandleRidingMovement(dt);
+                return;
+            }
+
+            Vector3 dir = GetInputDirection();
+
+            // 水中禁止冲刺，速度减半
+            bool inWater = IsInWater;
+            bool sprint  = !inWater && Input.IsActionPressed("sprint") && _survival?.Stamina > 0f;
+            float speed  = inWater ? MoveSpeed * 0.55f : (sprint ? SprintSpeed : MoveSpeed);
             if (_survival != null) _survival.IsSprinting = sprint && dir.LengthSquared() > 0.01f;
 
             Velocity = dir * speed;
@@ -105,6 +145,47 @@ namespace SurvivalGame.Entities.Player
                 _position.Velocity = Velocity;
                 if (dir.LengthSquared() > 0.01f)
                     _position.FacingAngle = Mathf.Atan2(dir.X, dir.Z);
+            }
+
+            if (WorldManager.Instance != null)
+                WorldManager.Instance.PlayerPosition = GlobalPosition;
+        }
+
+        private void HandleRidingMovement(float dt)
+        {
+            int mountId = _survival!.RidingEntityId;
+            var creaturePos   = EcsWorld.Instance.GetComponent<PositionComponent>(mountId);
+            var mountAi       = EcsWorld.Instance.GetComponent<AIComponent>(mountId);
+
+            // 坐骑消失时自动下马
+            if (creaturePos == null)
+            {
+                _survival.RidingEntityId = -1;
+                return;
+            }
+
+            Vector3 dir   = GetInputDirection();
+            float   speed = mountAi?.MoveSpeed ?? 4f;
+
+            if (dir.LengthSquared() > 0.01f)
+            {
+                creaturePos.Position  += dir * speed * dt;
+                creaturePos.FacingAngle = Mathf.Atan2(dir.X, dir.Z);
+                creaturePos.Velocity    = dir * speed;
+            }
+            else
+            {
+                creaturePos.Velocity = Vector3.Zero;
+            }
+
+            // 玩家骑在坐骑上方（Y+0.8 模拟骑乘高度）
+            GlobalPosition = creaturePos.Position + new Vector3(0f, 0.8f, 0f);
+            Velocity       = Vector3.Zero;
+
+            if (_position != null)
+            {
+                _position.Position = GlobalPosition;
+                _position.Velocity = Vector3.Zero;
             }
 
             if (WorldManager.Instance != null)
@@ -136,6 +217,12 @@ namespace SurvivalGame.Entities.Player
 
             if (@event.IsActionPressed("open_craft"))
                 EventBus.Instance.Emit("toggle_craft_menu", null);
+
+            if (@event.IsActionPressed("evolve_creature"))
+                TryEvolveNearbyCreature();
+
+            if (@event.IsActionPressed("mount"))
+                TryToggleMount();
         }
 
         // ── 鼠标世界坐标（投影到 Y=0 平面）────────────────────────────
@@ -148,8 +235,21 @@ namespace SurvivalGame.Entities.Player
             var from = camera.ProjectRayOrigin(mousePos);
             var dir  = camera.ProjectRayNormal(mousePos);
             if (Mathf.Abs(dir.Y) < 0.001f) return null;
-            float t = -from.Y / dir.Y;
-            return from + dir * t;
+
+            // 先投影到 Y=0 平面，得到近似 XZ
+            float t0 = -from.Y / dir.Y;
+            var flatPos = from + dir * t0;
+
+            // 用地形高度做一次修正，消除摄像机倾斜引起的 XZ 偏移
+            var map = FiniteWorldMap.Instance;
+            if (map != null && map.IsInBounds(flatPos))
+            {
+                float h = map.GetTerrainHeight(flatPos);
+                float t1 = (h - from.Y) / dir.Y;
+                return from + dir * t1;
+            }
+
+            return flatPos;
         }
 
         // ── 输入方向 ──────────────────────────────────────────────────
@@ -269,6 +369,92 @@ namespace SurvivalGame.Entities.Player
             GameManager.Instance?.Survival?.EatFood(EntityId, itemDef.HungerRestore, itemDef.ThirstRestore);
             inv.RemoveItem(target.ItemId, 1);
             GD.Print($"[Player] 消耗 {itemDef.DisplayName}，饥饿+{itemDef.HungerRestore} 口渴+{itemDef.ThirstRestore}");
+        }
+
+        // ── 进化（V键）：触发附近可进化的驯服生物进化 ───────────────
+
+        private void TryEvolveNearbyCreature()
+        {
+            var myPos = EcsWorld.Instance.GetComponent<PositionComponent>(EntityId);
+            if (myPos == null) return;
+
+            int nearestId = -1;
+            float nearestDist = InteractRange * 1.5f;   // 5.5m 范围
+
+            foreach (var id in EcsWorld.Instance.Query<ExperienceComponent, CreatureStatsComponent, PositionComponent>())
+            {
+                var exp   = EcsWorld.Instance.GetComponent<ExperienceComponent>(id)!;
+                var stats = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id)!;
+                if (!exp.CanEvolve || stats.OwnerId != EntityId) continue;
+
+                var pos  = EcsWorld.Instance.GetComponent<PositionComponent>(id)!;
+                float d  = myPos.Position.DistanceTo(pos.Position);
+                if (d < nearestDist) { nearestDist = d; nearestId = id; }
+            }
+
+            if (nearestId < 0)
+            {
+                GD.Print("[Player] 附近没有可进化的驯服生物");
+                return;
+            }
+
+            GameManager.Instance?.Experience?.TryEvolve(nearestId);
+        }
+
+        // ── 骑乘（R键）：上马 / 下马 ─────────────────────────────────
+
+        private void TryToggleMount()
+        {
+            if (_survival == null) return;
+
+            // 当前正在骑乘 → 下马
+            if (_survival.RidingEntityId >= 0)
+            {
+                var mountAi = EcsWorld.Instance.GetComponent<AIComponent>(_survival.RidingEntityId);
+                if (mountAi != null)
+                {
+                    mountAi.CurrentState = FSMState.Follow;
+                    mountAi.StateTimer   = 0f;
+                }
+                GD.Print("[Player] 下马");
+                _survival.RidingEntityId = -1;
+                return;
+            }
+
+            // 寻找附近可骑乘的已驯服生物
+            var myPos = EcsWorld.Instance.GetComponent<PositionComponent>(EntityId);
+            if (myPos == null) return;
+
+            int nearestId   = -1;
+            float nearestDist = InteractRange;
+
+            foreach (var id in EcsWorld.Instance.Query<TamingComponent, CreatureStatsComponent, PositionComponent>())
+            {
+                var taming = EcsWorld.Instance.GetComponent<TamingComponent>(id)!;
+                var stats  = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(id)!;
+                if (taming.State != TamingState.Tamed) continue;
+                if (stats.OwnerId != EntityId)         continue;
+                if (!stats.CanRide)                    continue;
+
+                var pos  = EcsWorld.Instance.GetComponent<PositionComponent>(id)!;
+                float d  = myPos.Position.DistanceTo(pos.Position);
+                if (d < nearestDist) { nearestDist = d; nearestId = id; }
+            }
+
+            if (nearestId < 0)
+            {
+                GD.Print("[Player] 附近没有可骑乘的驯服生物（需要进化到最终形态）");
+                return;
+            }
+
+            // 上马
+            var ai = EcsWorld.Instance.GetComponent<AIComponent>(nearestId)!;
+            ai.CurrentState = FSMState.Mounted;
+            ai.StateTimer   = 0f;
+            _survival.RidingEntityId = nearestId;
+
+            var name = EcsWorld.Instance.GetComponent<CreatureStatsComponent>(nearestId)?.SpeciesId ?? "?";
+            GD.Print($"[Player] 上马：骑乘 {name}");
         }
 
         // ── 指令（H键）：切换已驯服生物的跟随/采集指令 ──────────────
